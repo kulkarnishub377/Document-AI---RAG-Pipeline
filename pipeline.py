@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -27,17 +28,58 @@ from embedding.vector_store import (
     get_index_stats,
     index_chunks,
     load_index,
+    reset_index,
     similarity_search,
 )
 from ingestion.document_loader import load_document
 from llm.prompt_chains import (
     answer_question,
+    check_ollama_connection,
     extract_fields,
     summarize,
     table_qa,
 )
 from retrieval.reranker import rerank
 from config import RETRIEVAL_TOP_K, RERANKER_TOP_K
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STARTUP  (call once at API boot)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def startup() -> Dict[str, Any]:
+    """
+    Initialize the pipeline — load index from disk if it exists,
+    and verify Ollama is reachable.
+
+    Returns a status dict with what was initialized.
+    """
+    info: Dict[str, Any] = {"index": "empty", "ollama": "unknown"}
+
+    # Try to load existing FAISS index
+    try:
+        stats = get_index_stats()
+        if stats.get("total_vectors", 0) > 0:
+            info["index"] = f"loaded ({stats['total_vectors']} vectors)"
+        else:
+            info["index"] = "empty (no documents ingested yet)"
+    except Exception as e:
+        info["index"] = f"error: {e}"
+
+    # Check Ollama connectivity
+    if check_ollama_connection():
+        info["ollama"] = "connected"
+        logger.info("Ollama is reachable — LLM ready.")
+    else:
+        info["ollama"] = "not reachable"
+        logger.warning(
+            "Ollama is not reachable at the configured URL. "
+            "Query endpoints will fail until Ollama is started. "
+            "Run: ollama serve"
+        )
+
+    logger.info(f"Pipeline startup complete: {info}")
+    return info
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -51,7 +93,7 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
     Steps:  load → OCR if needed → chunk → embed → index → save to disk
 
     Args:
-        file_path:     path to PDF / image / DOCX
+        file_path:     path to PDF / image / DOCX / TXT
         force_rebuild: if True, rebuild the entire FAISS index from scratch
 
     Returns:
@@ -59,15 +101,13 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
           "file":       str,
           "pages":      int,
           "chunks":     int,
-          "index_size": int,   ← total vectors now in the index
+          "index_size": int,
+          "time_seconds": float,
         }
-
-    Usage:
-        result = ingest("my_invoice.pdf")
-        print(result)
     """
     path = Path(file_path)
     logger.info(f"═══ INGESTION START: {path.name} ═══")
+    t0 = time.perf_counter()
 
     # Stage 1 — Load
     pages = load_document(path)
@@ -80,22 +120,26 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
     if not chunks:
         return {
             "file": path.name, "pages": len(pages),
-            "chunks": 0, "index_size": get_index_stats().get("total_vectors", 0)
+            "chunks": 0, "index_size": get_index_stats().get("total_vectors", 0),
+            "time_seconds": round(time.perf_counter() - t0, 2),
         }
 
     # Stage 3 — Embed + Index
     index_chunks(chunks, force_rebuild=force_rebuild)
     stats = get_index_stats()
+    elapsed = round(time.perf_counter() - t0, 2)
 
     logger.info(f"═══ INGESTION DONE: {path.name}  "
                 f"| chunks={len(chunks)}  "
-                f"| total_index_size={stats['total_vectors']} ═══")
+                f"| total_index_size={stats['total_vectors']}  "
+                f"| time={elapsed}s ═══")
 
     return {
-        "file":       path.name,
-        "pages":      len(pages),
-        "chunks":     len(chunks),
-        "index_size": stats["total_vectors"],
+        "file":         path.name,
+        "pages":        len(pages),
+        "chunks":       len(chunks),
+        "index_size":   stats["total_vectors"],
+        "time_seconds": elapsed,
     }
 
 
@@ -107,8 +151,8 @@ def ingest_folder(folder: str | Path) -> List[Dict[str, Any]]:
         results = ingest_folder("data/uploads/")
     """
     folder  = Path(folder)
-    allowed = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".docx"}
-    files   = [f for f in folder.iterdir() if f.suffix.lower() in allowed]
+    allowed = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".docx", ".txt", ".md"}
+    files   = sorted(f for f in folder.iterdir() if f.suffix.lower() in allowed)
 
     if not files:
         logger.warning(f"No supported files found in {folder}")
@@ -117,7 +161,11 @@ def ingest_folder(folder: str | Path) -> List[Dict[str, Any]]:
     results = []
     for i, f in enumerate(files, 1):
         logger.info(f"Processing file {i}/{len(files)}: {f.name}")
-        results.append(ingest(f))
+        try:
+            results.append(ingest(f))
+        except Exception as e:
+            logger.error(f"Failed to ingest {f.name}: {e}")
+            results.append({"file": f.name, "error": str(e)})
 
     return results
 
@@ -167,13 +215,11 @@ def extract(fields: List[str], context_query: str = "") -> Dict[str, Any]:
 
     Args:
         fields:        list of field names to extract
-        context_query: optional query to narrow down which chunks to search
-                       (defaults to searching by the field names themselves)
+        context_query: optional query to narrow the search
 
     Usage:
         result = extract(["invoice_number", "vendor_name", "due_date", "total"])
         print(result["fields"])
-        # → {"invoice_number": "INV-2024-001", "vendor_name": "Acme Corp", ...}
     """
     search_query = context_query or " ".join(fields)
     logger.info(f"EXTRACT fields: {fields}")
@@ -195,43 +241,72 @@ def query_table(question: str) -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STATUS
+# STATUS & MANAGEMENT
 # ─────────────────────────────────────────────────────────────────────────────
 
 def status() -> Dict[str, Any]:
     """Return current pipeline status and index statistics."""
-    return get_index_stats()
+    stats = get_index_stats()
+    stats["ollama"] = "connected" if check_ollama_connection() else "not reachable"
+    return stats
+
+
+def clear_index() -> Dict[str, str]:
+    """Delete the entire FAISS index and start fresh."""
+    reset_index()
+    return {"status": "index cleared successfully"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# QUICK TEST  —  run this file directly to smoke-test the pipeline
+# CLI — run this file directly for a quick smoke test
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python pipeline.py <path-to-pdf-or-image>")
-        sys.exit(1)
+        print("\nDocument AI + RAG Pipeline")
+        print("=" * 40)
+        print("\nUsage:")
+        print("  python pipeline.py <path-to-document>     Ingest and start Q&A")
+        print("  python pipeline.py --status               Show index stats")
+        print("  python pipeline.py --clear                Clear the entire index")
+        sys.exit(0)
 
-    doc_path = sys.argv[1]
+    arg = sys.argv[1]
 
-    # Step 1: Ingest
+    if arg == "--status":
+        import json
+        print(json.dumps(status(), indent=2))
+        sys.exit(0)
+
+    if arg == "--clear":
+        print(clear_index())
+        sys.exit(0)
+
+    # Normal mode: ingest + interactive Q&A
     print("\n─── Ingesting document ───")
-    result = ingest(doc_path)
-    print(result)
+    result = ingest(arg)
+    print(f"\n✓ Ingested: {result['file']}")
+    print(f"  Pages:      {result['pages']}")
+    print(f"  Chunks:     {result['chunks']}")
+    print(f"  Index size: {result['index_size']} vectors")
+    print(f"  Time:       {result['time_seconds']}s")
 
-    # Step 2: Interactive Q&A loop
-    print("\n─── Q&A mode (type 'exit' to quit) ───")
+    print("\n─── Q&A mode (type 'exit' to quit) ───\n")
     while True:
-        q = input("\nYour question: ").strip()
+        try:
+            q = input("Your question: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
         if q.lower() in {"exit", "quit", "q"}:
             break
         if not q:
             continue
 
         ans = query(q)
-        print(f"\nAnswer:\n{ans['answer']}")
-        print("\nSources:")
+        print(f"\n📝 Answer:\n{ans['answer']}\n")
+        print("📎 Sources:")
         for s in ans["sources"]:
             print(f"  • {s['source']}, page {s['page']}  — {s['excerpt'][:80]}…")
+        print()
