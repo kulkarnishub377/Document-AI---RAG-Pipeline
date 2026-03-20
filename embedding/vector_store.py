@@ -156,6 +156,9 @@ def index_chunks(chunks, force_rebuild: bool = False) -> None:
         with open(METADATA_PATH, "w", encoding="utf-8") as f:
             json.dump(_metadata, f, ensure_ascii=False, indent=2)
 
+        global _bm25_index
+        _bm25_index = None
+
     logger.info(
         f"Index saved — total vectors: {_faiss_index.ntotal}  |  "
         f"index: {FAISS_INDEX_PATH}  |  metadata: {METADATA_PATH}"
@@ -180,8 +183,63 @@ def load_index() -> None:
         with open(METADATA_PATH, "r", encoding="utf-8") as f:
             _metadata = {int(k): v for k, v in json.load(f).items()}
 
+        global _bm25_index
+        _bm25_index = None
+
     logger.info(f"Index loaded — {_faiss_index.ntotal} vectors "
                 f"in {time.perf_counter() - t0:.2f}s.")
+
+
+def _build_bm25() -> None:
+    """Build the BM25 index from _metadata."""
+    global _bm25_index, _bm25_corpus_ids
+    import string
+    try:
+        from rank_bm25 import BM25Okapi
+    except ImportError:
+        logger.warning("rank_bm25 not installed. Hybrid search BM25 disabled.")
+        _bm25_index = False
+        return
+
+    _bm25_corpus_ids = []
+    tokenized_corpus = []
+    table = str.maketrans('', '', string.punctuation)
+    
+    for k in sorted(_metadata.keys()):
+        text = str(_metadata[k].get("text", "")).lower().translate(table)
+        tokenized_corpus.append(text.split())
+        _bm25_corpus_ids.append(k)
+        
+    if tokenized_corpus:
+        _bm25_index = BM25Okapi(tokenized_corpus)
+        logger.info(f"Built BM25 index over {len(tokenized_corpus)} chunks.")
+    else:
+        _bm25_index = False
+
+
+def get_bm25_scores(query: str, top_k: int) -> dict:
+    """Return top_k document IDs and their BM25 scores."""
+    global _bm25_index
+    if _bm25_index is None:
+        _build_bm25()
+    if not _bm25_index:
+        return {}
+        
+    import string
+    import numpy as np
+    
+    table = str.maketrans('', '', string.punctuation)
+    tokenized_query = query.lower().translate(table).split()
+    
+    scores = _bm25_index.get_scores(tokenized_query)
+    top_indices = np.argsort(scores)[::-1][:top_k]
+    
+    results = {}
+    for idx in top_indices:
+        if scores[idx] > 0:
+            doc_id = _bm25_corpus_ids[idx]
+            results[doc_id] = float(scores[idx])
+    return results
 
 
 def similarity_search(query: str,
@@ -200,15 +258,33 @@ def similarity_search(query: str,
         load_index()
 
     t0 = time.perf_counter()
+    
+    # 1. Semantic Search (FAISS)
     q_vec = _embed_texts([query], show_progress=False)
     scores, ids = _faiss_index.search(q_vec, top_k)
+    
+    candidate_scores = {}
+    for score, idx in zip(scores[0], ids[0]):
+        if idx != -1:
+            candidate_scores[int(idx)] = float(score)
+
+    # 2. Keyword Search (BM25)
+    try:
+        bm25_scores = get_bm25_scores(query, top_k)
+        for doc_id, bm25_score in bm25_scores.items():
+            # If doc_id already in candidate_scores, we leave its FAISS score there,
+            # otherwise we add it with a base score (0.0) so reranker evaluates it.
+            if doc_id not in candidate_scores:
+                candidate_scores[doc_id] = 0.0
+    except Exception as e:
+        logger.warning(f"BM25 search failed: {e}")
+
     search_time = time.perf_counter() - t0
 
     results: List[SearchResult] = []
-    for rank, (score, idx) in enumerate(zip(scores[0], ids[0]), start=1):
-        if idx == -1:          # FAISS returns -1 for empty slots
-            continue
-        meta = _metadata.get(int(idx))
+    # Convert all candidate IDs back to SearchResult objects
+    for meta_id, score in candidate_scores.items():
+        meta = _metadata.get(meta_id)
         if meta is None:
             continue
         results.append(SearchResult(
@@ -217,22 +293,27 @@ def similarity_search(query: str,
             page_num   = meta["page_num"],
             chunk_type = meta["chunk_type"],
             text       = meta["text"],
-            score      = float(score),
-            rank       = rank,
+            score      = score,
+            rank       = 0, # Will be set by reranker
         ))
 
-    logger.debug(f"FAISS search: {len(results)} results in {search_time:.3f}s  "
-                 f"query='{query[:50]}'")
+    # Sort candidates initially by FAISS score (fallback if reranker is disabled)
+    results.sort(key=lambda x: x.score, reverse=True)
+    for index, res in enumerate(results, start=1):
+        res.rank = index
+
+    logger.debug(f"Hybrid search: FAISS + BM25 yielded {len(results)} distinct candidates in {search_time:.3f}s")
     return results
 
 
 def reset_index() -> None:
     """Delete the FAISS index and metadata from disk and memory."""
-    global _faiss_index, _metadata
+    global _faiss_index, _metadata, _bm25_index
 
     with _lock:
         _faiss_index = None
         _metadata    = {}
+        _bm25_index  = None
 
         if FAISS_INDEX_PATH.exists():
             FAISS_INDEX_PATH.unlink()
