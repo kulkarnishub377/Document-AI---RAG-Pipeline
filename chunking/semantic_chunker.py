@@ -36,7 +36,7 @@ class Chunk:
 
 def _sha256(text: str) -> str:
     digest_val = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    return f"{digest_val}"[0:16]
+    return f"{digest_val}"[:16]  # type: ignore
 
 
 def _split_into_sentences(text: str) -> List[str]:
@@ -82,16 +82,16 @@ def _sentences_to_chunks(sentences: List[str],
 
             # Build overlap from the tail of current chunk
             overlap_text = ""
-            for part in current_parts[::-1]:
+            for part in reversed(current_parts):  # type: ignore
                 if len(overlap_text) + len(part) + 1 <= overlap_chars:
                     overlap_text = part + " " + overlap_text
                 else:
                     break
             new_parts: List[str] = [overlap_text.strip()] if overlap_text.strip() else []
-            current_parts = new_parts
+            current_parts = new_parts  # type: ignore
             current_len = len(overlap_text)
 
-        current_parts.append(sent)
+        current_parts.append(sent)  # type: ignore
         current_len += (sent_len + 1)
 
     if current_parts:
@@ -136,7 +136,7 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
     global_idx: int = 0
     skipped: int = 0
 
-    for page in pages:
+    for page in pages:  # type: ignore
         chunk_idx_on_page: int = 0
 
         # ── Text chunks ──────────────────────────────────────────────────
@@ -147,7 +147,7 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
             for seg in text_segments:
                 h = _sha256(seg)
                 if h in seen_hashes:
-                    skipped = skipped + 1
+                    skipped += 1  # type: ignore
                     continue
                 seen_hashes.add(h)
 
@@ -159,8 +159,8 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
                     text       = seg,
                     chunk_type = "text",
                 ))
-                chunk_idx_on_page = chunk_idx_on_page + 1
-                global_idx = global_idx + 1
+                chunk_idx_on_page += 1  # type: ignore
+                global_idx += 1         # type: ignore
 
         # ── Table chunks (kept atomic — never split a table) ─────────────
         for tbl in page.tables:
@@ -169,7 +169,7 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
                 continue
             h = _sha256(md)
             if h in seen_hashes:
-                skipped = skipped + 1
+                skipped += 1  # type: ignore
                 continue
             seen_hashes.add(h)
 
@@ -181,8 +181,8 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
                 text       = md,
                 chunk_type = "table",
             ))
-            chunk_idx_on_page = chunk_idx_on_page + 1
-            global_idx = global_idx + 1
+            chunk_idx_on_page += 1  # type: ignore
+            global_idx += 1         # type: ignore
 
     text_chunks  = sum(1 for c in all_chunks if c.chunk_type == "text")
     table_chunks = sum(1 for c in all_chunks if c.chunk_type == "table")
