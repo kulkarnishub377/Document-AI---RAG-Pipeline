@@ -42,6 +42,18 @@ const els = {
     modeTabs:       $('modeTabs'),
 };
 
+// Configure marked.js with highlight.js integration
+if (typeof marked !== 'undefined' && window.hljs) {
+    marked.setOptions({
+        highlight: function(code, lang) {
+            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+            return hljs.highlight(code, { language }).value;
+        },
+        breaks: true,
+        gfm: true
+    });
+}
+
 // ── Initialization ────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initUpload();
@@ -407,23 +419,21 @@ function scrollToBottom() {
 
 // ── Text Formatting ───────────────────────────────────────────────────────
 function formatText(text) {
-    // Escape HTML
+    // Premium markdown parsing if available
+    if (typeof marked !== 'undefined') {
+        return marked.parse(text);
+    }
+    
+    // Fallback naive rendering
     let html = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    // Bold
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-    // Inline code
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-    // Bullet points
     html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<li>$1</li>');
     html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-
-    // Line breaks
     html = html.replace(/\n/g, '<br>');
 
     return html;

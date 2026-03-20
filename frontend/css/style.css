@@ -619,6 +619,64 @@ body {
     overflow-x: auto;
     font-family: var(--font-mono);
     font-size: 0.82rem;
+    border: 1px solid var(--border);
+}
+
+/* Markdown Enhancements */
+.msg__bubble p {
+    margin-bottom: 8px;
+}
+
+.msg__bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.msg__bubble ul, .msg__bubble ol {
+    margin: 8px 0 8px 24px;
+}
+
+.msg__bubble li {
+    margin-bottom: 4px;
+}
+
+.msg__bubble blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+    margin: 12px 0;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    padding: 8px 12px;
+    border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+
+.msg__bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.85rem;
+    overflow: hidden;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+}
+
+.msg__bubble th, .msg__bubble td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+
+.msg__bubble th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.msg__bubble tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.msg__bubble tr:hover {
+    background: var(--bg-hover);
 }
 
 .msg__bubble code {
