@@ -9,6 +9,7 @@
 #   • Persist index + metadata to disk
 #   • Provide similarity_search(query, top_k) → List[SearchResult]
 #   • Provide reset_index() to clear and rebuild from scratch
+#   • Optional GPU acceleration with auto-detection
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -18,9 +19,8 @@ import time
 import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-import faiss
 import numpy as np
 from loguru import logger
 from sentence_transformers import SentenceTransformer
@@ -28,10 +28,38 @@ from sentence_transformers import SentenceTransformer
 from config import (
     EMBED_DIMENSION,
     EMBED_MODEL_NAME,
+    ENABLE_GPU,
     FAISS_INDEX_PATH,
     METADATA_PATH,
     RETRIEVAL_TOP_K,
 )
+
+# ── GPU Auto-detection ───────────────────────────────────────────────────────
+
+_use_gpu = False
+
+def _init_faiss():
+    """Import FAISS with GPU support if available and enabled."""
+    global _use_gpu
+    import faiss as faiss_module
+
+    if ENABLE_GPU == "false":
+        logger.info("GPU disabled by config — using FAISS CPU.")
+        return faiss_module
+
+    try:
+        gpu_count = faiss_module.get_num_gpus()
+        if gpu_count > 0 and ENABLE_GPU in ("true", "auto"):
+            _use_gpu = True
+            logger.info(f"🚀 FAISS GPU detected — {gpu_count} GPU(s) available.")
+        else:
+            logger.info("No GPU detected — using FAISS CPU.")
+    except Exception:
+        logger.info("FAISS GPU detection failed — using CPU.")
+
+    return faiss_module
+
+faiss = _init_faiss()
 
 
 # ── Search result container ──────────────────────────────────────────────────
@@ -53,9 +81,8 @@ class SearchResult:
 _embed_model: Optional[SentenceTransformer] = None
 _faiss_index: Optional[faiss.Index]         = None
 _metadata:    Dict[int, dict]               = {}
-_lock = threading.Lock()
+_lock = threading.RLock()   # RLock to prevent deadlock on re-entry
 
-from typing import Any
 _bm25_index:       Optional[Any] = None
 _bm25_corpus_ids:  List[int]     = []
 
@@ -96,13 +123,20 @@ def _build_faiss_index(embeddings: np.ndarray) -> faiss.Index:
     """Build a flat inner-product index (cosine sim after L2 norm)."""
     dim   = embeddings.shape[1]
     index = faiss.IndexFlatIP(dim)
+    if _use_gpu:
+        try:
+            res = faiss.StandardGpuResources()
+            index = faiss.index_cpu_to_gpu(res, 0, index)
+            logger.info("FAISS index moved to GPU.")
+        except Exception as e:
+            logger.warning(f"GPU index creation failed ({e}), using CPU.")
     index.add(embeddings)
     return index
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-def index_chunks(chunks, force_rebuild: bool = False) -> None:
+def index_chunks(chunks: list, force_rebuild: bool = False) -> None:
     """
     Embed all chunks and save FAISS index + metadata to disk.
 
@@ -230,7 +264,6 @@ def get_bm25_scores(query: str, top_k: int) -> dict:
         return {}
         
     import string
-    import numpy as np
     
     table = str.maketrans('', '', string.punctuation)
     tokenized_query = query.lower().translate(table).split()
@@ -276,8 +309,6 @@ def similarity_search(query: str,
     try:
         bm25_scores = get_bm25_scores(query, top_k)
         for doc_id, bm25_score in bm25_scores.items():
-            # If doc_id already in candidate_scores, we leave its FAISS score there,
-            # otherwise we add it with a base score (0.0) so reranker evaluates it.
             if doc_id not in candidate_scores:
                 candidate_scores[doc_id] = 0.0
     except Exception as e:
@@ -286,7 +317,6 @@ def similarity_search(query: str,
     search_time = time.perf_counter() - t0
 
     results: List[SearchResult] = []
-    # Convert all candidate IDs back to SearchResult objects
     for meta_id, score in candidate_scores.items():
         meta = _metadata.get(meta_id)
         if meta is None:
@@ -298,10 +328,9 @@ def similarity_search(query: str,
             chunk_type = meta["chunk_type"],
             text       = meta["text"],
             score      = score,
-            rank       = 0, # Will be set by reranker
+            rank       = 0,
         ))
 
-    # Sort candidates initially by FAISS score (fallback if reranker is disabled)
     results.sort(key=lambda x: x.score, reverse=True)
     for index, res in enumerate(results, start=1):
         res.rank = index
@@ -339,7 +368,10 @@ def delete_source(source_name: str) -> int:
     with _lock:
         if _faiss_index is None:
             if FAISS_INDEX_PATH.exists():
-                load_index()
+                # Load directly without calling load_index() to avoid RLock re-entry
+                _faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
+                with open(METADATA_PATH, "r", encoding="utf-8") as f:
+                    _metadata = {int(k): v for k, v in json.load(f).items()}
             else:
                 return 0
 
@@ -348,12 +380,12 @@ def delete_source(source_name: str) -> int:
         if not ids_to_remove:
             return 0
 
-        # Remove from FAISS index (this physically shifts the remaining vectors down)
-        sel = faiss.IDSelectorBatch(ids_to_remove)
+        # FIX: Convert to numpy int64 array for IDSelectorBatch
+        ids_array = np.array(ids_to_remove, dtype=np.int64)
+        sel = faiss.IDSelectorBatch(ids_array)
         _faiss_index.remove_ids(sel)
 
-        # Because FAISS IndexFlatIP shifted the remaining vectors downwards to fill the gaps,
-        # we MUST rebuild our metadata dictionary sequentially to match the new vector IDs!
+        # Rebuild metadata dictionary sequentially to match new vector IDs
         keep_items = [v for k, v in sorted(_metadata.items()) if k not in ids_to_remove]
         _metadata.clear()
         for i, v in enumerate(keep_items):
@@ -363,6 +395,9 @@ def delete_source(source_name: str) -> int:
         faiss.write_index(_faiss_index, str(FAISS_INDEX_PATH))
         with open(METADATA_PATH, "w", encoding="utf-8") as f:
             json.dump(_metadata, f, ensure_ascii=False, indent=2)
+
+        # Invalidate BM25 index
+        _bm25_index = None
 
         logger.info(f"Deleted {len(ids_to_remove)} chunks for source: {source_name}")
         return len(ids_to_remove)

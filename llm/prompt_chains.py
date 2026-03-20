@@ -1,6 +1,6 @@
 # llm/prompt_chains.py
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 5 — LLM Prompt Chains  (via Ollama + LangChain)
+# Stage 5 — LLM Prompt Chains  (via Ollama + LangChain LCEL)
 #
 # Four reusable chains:
 #   1. answer_question   – general document Q&A with source citations
@@ -10,6 +10,9 @@
 #
 # All chains run against a local Ollama server (no API key needed).
 # Make sure Ollama is running:  ollama serve  (auto-starts on most OS)
+#
+# NOTE: Uses modern LCEL (LangChain Expression Language) pipe syntax
+#       instead of deprecated LLMChain.
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -20,11 +23,16 @@ import time
 from typing import Any, Dict, List, Optional
 
 from langchain_ollama import OllamaLLM
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from loguru import logger
 
 from config import OLLAMA_BASE_URL, OLLAMA_MODEL
+
+# Forward ref for type hints
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from embedding.vector_store import SearchResult
 
 
 # ── Singleton LLM ─────────────────────────────────────────────────────────────
@@ -36,6 +44,11 @@ def _get_llm() -> OllamaLLM:
     """Connect to the Ollama LLM (must be running locally)."""
     global _llm
     if _llm is None:
+        if not check_ollama_connection():
+            raise ConnectionError(
+                f"Ollama is not reachable at {OLLAMA_BASE_URL}. "
+                "Start it with: ollama serve"
+            )
         logger.info(f"Connecting to Ollama model: {OLLAMA_MODEL}  "
                     f"at {OLLAMA_BASE_URL}")
         _llm = OllamaLLM(
@@ -62,7 +75,7 @@ def check_ollama_connection() -> bool:
 
 # ── Helper: format retrieved chunks into a context block ─────────────────────
 
-def _format_context(results) -> str:
+def _format_context(results: List[SearchResult]) -> str:
     """
     Convert search results into a numbered context string for the prompt.
     Each source is labelled so the LLM can cite it.
@@ -74,13 +87,15 @@ def _format_context(results) -> str:
     return "\n".join(lines)
 
 
-def _extract_sources(results) -> List[Dict]:
+def _extract_sources(results: List[SearchResult]) -> List[Dict]:
     """Extract source metadata for the response payload."""
     return [
         {
-            "source":   r.source,
-            "page":     r.page_num,
-            "excerpt":  r.text[:200] + ("…" if len(r.text) > 200 else ""),
+            "source":     r.source,
+            "page":       r.page_num,
+            "excerpt":    r.text[:200] + ("…" if len(r.text) > 200 else ""),
+            "score":      round(r.score, 3),
+            "chunk_type": r.chunk_type,
         }
         for r in results
     ]
@@ -90,7 +105,14 @@ def _extract_sources(results) -> List[Dict]:
 # Chain 1 — General Document Q&A (Streaming & Memory)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _format_history(history: List[Dict[str, str]] = None) -> str:
+_QA_SYSTEM_PROMPT = """You are a helpful document assistant.
+Answer the question using ONLY the information provided in the context.
+If the answer is not in the context, say "I could not find this information in the uploaded documents."
+Always mention which source (file name and page) your answer comes from.
+Be precise, concise, and factual."""
+
+
+def _format_history(history: Optional[List[Dict[str, str]]] = None) -> str:
     if not history:
         return ""
     lines = ["CHAT HISTORY:"]
@@ -102,13 +124,15 @@ def _format_history(history: List[Dict[str, str]] = None) -> str:
     return "\n".join(lines)
 
 
-async def stream_answer_question(query: str, results, history: List[Dict[str, str]] = None):
+async def stream_answer_question(
+    query: str,
+    results: List[SearchResult],
+    history: Optional[List[Dict[str, str]]] = None
+):
     """
     Asynchronous generator yielding SSE JSON chunks for real-time streaming.
     Includes chat history for conversational memory.
     """
-    import json
-    
     if not results:
         yield f"data: {json.dumps({'delta': 'No relevant documents found.', 'sources': []})}\n\n"
         yield "data: [DONE]\n\n"
@@ -118,10 +142,7 @@ async def stream_answer_question(query: str, results, history: List[Dict[str, st
     context = _format_context(results)
     history_str = _format_history(history)
     
-    prompt_text = f"""You are a helpful document assistant.
-Answer the question using ONLY the information provided in the context.
-If the answer is not in the context, say "I could not find this information."
-Always mention which source (file name and page) your answer comes from.
+    prompt_text = f"""{_QA_SYSTEM_PROMPT}
 
 {history_str}
 CONTEXT:
@@ -150,19 +171,30 @@ ANSWER:"""
     yield "data: [DONE]\n\n"
 
 
-def answer_question(query: str, results) -> Dict[str, Any]:
-    # Keeping synchronous version for backwards compatibility
-    ...
+def answer_question(query: str, results: List[SearchResult]) -> Dict[str, Any]:
+    """
+    Answer a question synchronously with full system prompt and source citations.
+    """
     if not results:
         return {"answer": "No relevant documents found.", "sources": []}
 
     llm     = _get_llm()
     context = _format_context(results)
     
-    prompt_text = f"CONTEXT:\n{context}\n\nQUESTION:\n{query}\n\nANSWER:"
+    prompt_text = f"""{_QA_SYSTEM_PROMPT}
+
+CONTEXT:
+{context}
+
+QUESTION:
+{query}
+
+ANSWER:"""
     
-    logger.info(f"Running synchronous Q&A chain")
+    logger.info(f"Running synchronous Q&A chain | query: '{query[:60]}' | chunks: {len(results)}")
+    t0 = time.perf_counter()
     answer = llm.invoke(prompt_text)
+    logger.info(f"Q&A done in {time.perf_counter() - t0:.2f}s")
     
     return {
         "answer":  answer.strip(),
@@ -170,9 +202,8 @@ def answer_question(query: str, results) -> Dict[str, Any]:
     }
 
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# Chain 2 — Summarization
+# Chain 2 — Summarization  (LCEL pipe syntax)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _SUMMARY_TEMPLATE = PromptTemplate(
@@ -189,7 +220,7 @@ SUMMARY:""",
 )
 
 
-def summarize(results) -> Dict[str, Any]:
+def summarize(results: List[SearchResult]) -> Dict[str, Any]:
     """
     Produce a bullet-point summary of the retrieved content.
 
@@ -204,21 +235,23 @@ def summarize(results) -> Dict[str, Any]:
 
     llm     = _get_llm()
     context = _format_context(results)
-    chain   = LLMChain(llm=llm, prompt=_SUMMARY_TEMPLATE)
+
+    # Modern LCEL pipe syntax (replaces deprecated LLMChain)
+    chain = _SUMMARY_TEMPLATE | llm | StrOutputParser()
 
     logger.info(f"Running summarization chain  |  chunks: {len(results)}")
     t0     = time.perf_counter()
-    result = chain.invoke({"context": context})
+    summary_text = chain.invoke({"context": context})
     logger.info(f"Summary generated in {time.perf_counter() - t0:.2f}s")
 
     return {
-        "summary": result["text"].strip(),
+        "summary": summary_text.strip(),
         "sources": _extract_sources(results),
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Chain 3 — Structured Key-Field Extraction
+# Chain 3 — Structured Key-Field Extraction  (LCEL pipe syntax)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _EXTRACT_TEMPLATE = PromptTemplate(
@@ -239,7 +272,7 @@ JSON OUTPUT:""",
 )
 
 
-def extract_fields(results, fields: List[str]) -> Dict[str, Any]:
+def extract_fields(results: List[SearchResult], fields: List[str]) -> Dict[str, Any]:
     """
     Extract specific fields from document context as structured JSON.
 
@@ -259,14 +292,16 @@ def extract_fields(results, fields: List[str]) -> Dict[str, Any]:
     llm         = _get_llm()
     context     = _format_context(results)
     fields_str  = "\n".join(f"- {f}" for f in fields)
-    chain       = LLMChain(llm=llm, prompt=_EXTRACT_TEMPLATE)
+
+    # Modern LCEL pipe syntax
+    chain = _EXTRACT_TEMPLATE | llm | StrOutputParser()
 
     logger.info(f"Running extraction chain  |  fields: {fields}  |  "
                 f"chunks: {len(results)}")
 
-    t0  = time.perf_counter()
-    raw = chain.invoke({"context": context, "fields": fields_str})
-    raw_text = raw["text"].strip()
+    t0       = time.perf_counter()
+    raw_text = chain.invoke({"context": context, "fields": fields_str})
+    raw_text = raw_text.strip()
     logger.info(f"Extraction done in {time.perf_counter() - t0:.2f}s")
 
     # Strip markdown code fences if the model added them
@@ -287,7 +322,7 @@ def extract_fields(results, fields: List[str]) -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Chain 4 — Table Q&A
+# Chain 4 — Table Q&A  (LCEL pipe syntax)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _TABLE_QA_TEMPLATE = PromptTemplate(
@@ -307,7 +342,7 @@ ANSWER:""",
 )
 
 
-def table_qa(query: str, results) -> Dict[str, Any]:
+def table_qa(query: str, results: List[SearchResult]) -> Dict[str, Any]:
     """
     Answer questions specifically about tables found in the documents.
     Filters results to only table-type chunks automatically.
@@ -327,14 +362,16 @@ def table_qa(query: str, results) -> Dict[str, Any]:
 
     llm   = _get_llm()
     best  = table_results[0]
-    chain = LLMChain(llm=llm, prompt=_TABLE_QA_TEMPLATE)
+
+    # Modern LCEL pipe syntax
+    chain = _TABLE_QA_TEMPLATE | llm | StrOutputParser()
 
     logger.info(f"Running table Q&A  |  query: '{query[:60]}'")
-    t0     = time.perf_counter()
-    result = chain.invoke({"table": best.text, "question": query})
+    t0          = time.perf_counter()
+    answer_text = chain.invoke({"table": best.text, "question": query})
     logger.info(f"Table Q&A done in {time.perf_counter() - t0:.2f}s")
 
     return {
-        "answer":  result["text"].strip(),
+        "answer":  answer_text.strip(),
         "sources": _extract_sources(table_results),
     }

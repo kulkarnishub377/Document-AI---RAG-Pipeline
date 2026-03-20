@@ -22,6 +22,10 @@ from sentence_transformers import CrossEncoder
 
 from config import RERANKER_MODEL_NAME, RERANKER_TOP_K
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from embedding.vector_store import SearchResult
+
 
 # ── Singleton ────────────────────────────────────────────────────────────────
 
@@ -43,8 +47,8 @@ def _get_reranker() -> CrossEncoder:
 # ── Public API ───────────────────────────────────────────────────────────────
 
 def rerank(query: str,
-           candidates,
-           top_k: int = RERANKER_TOP_K):
+           candidates: List[SearchResult],
+           top_k: int = RERANKER_TOP_K) -> List[SearchResult]:
     """
     Re-score candidates using the cross-encoder and return the top_k best.
 
@@ -76,7 +80,7 @@ def rerank(query: str,
     )
 
     top = scored[:top_k]
-    results = []
+    results: List[SearchResult] = []
     for new_rank, (score, result) in enumerate(top, start=1):
         result.score = float(score)
         result.rank  = new_rank

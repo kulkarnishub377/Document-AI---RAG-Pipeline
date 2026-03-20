@@ -65,6 +65,17 @@ API_PORT = int(os.getenv("API_PORT", "8000"))
 MAX_FILE_SIZE_MB   = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp", ".docx", ".doc"}
 
+# ── GPU Acceleration ──────────────────────────────────────────────────────────
+ENABLE_GPU = os.getenv("ENABLE_GPU", "auto").lower()  # "auto" | "true" | "false"
+
+# ── Multi-Language ────────────────────────────────────────────────────────────
+MULTILINGUAL_MODE = os.getenv("MULTILINGUAL_MODE", "false").lower() == "true"
+MULTILINGUAL_EMBED_MODEL = os.getenv(
+    "MULTILINGUAL_EMBED_MODEL",
+    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
+MULTILINGUAL_EMBED_DIMENSION = int(os.getenv("MULTILINGUAL_EMBED_DIMENSION", "384"))
+
 # ── Logging ───────────────────────────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
@@ -90,4 +101,4 @@ logger.add(
 )
 
 # ── Version ───────────────────────────────────────────────────────────────────
-__version__ = "1.0.0"
+__version__ = "2.0.0"
