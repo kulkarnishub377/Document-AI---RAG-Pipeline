@@ -1,0 +1,60 @@
+# Environments
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+.venv/
+.env_dir/
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# IDEs / Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Document AI Pipeline specific
+data/uploads/
+data/index/
+data/*.log
+*.pdf
+*.docx
+*.png
+*.jpg
+*.jpeg
+
+# Model Caches
+.cache/
+~/.cache/huggingface/
+~/.paddleocr/

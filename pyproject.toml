@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doc-rag-pipeline"
+version = "1.0.0"
+description = "Intelligent Document Q&A pipeline using local models, FAISS, and Mistral."
+readme = "README.md"
+authors = [
+    { name = "Document AI" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "paddlepaddle==2.6.1",
+    "paddleocr==2.7.3",
+    "pdfplumber==0.11.0",
+    "PyMuPDF==1.24.5",
+    "python-docx==1.1.2",
+    "camelot-py[cv]==0.11.0",
+    "langchain==0.2.12",
+    "langchain-community==0.2.11",
+    "langchain-ollama==0.1.1",
+    "tiktoken==0.7.0",
+    "sentence-transformers==3.0.1",
+    "faiss-cpu==1.8.0",
+    "numpy==1.26.4",
+    "scipy==1.13.1",
+    "fastapi==0.111.1",
+    "uvicorn[standard]==0.30.3",
+    "python-multipart==0.0.9",
+    "tqdm==4.66.4",
+    "python-dotenv==1.0.1",
+    "loguru==0.7.2",
+    "pydantic==2.8.2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "black",
+    "flake8"
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
