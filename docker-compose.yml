@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Docker Compose — Document AI + RAG Pipeline
+# ─────────────────────────────────────────────────────────────────────────────
+# Start everything:   docker-compose up -d
+# View logs:          docker-compose logs -f
+# Stop:               docker-compose down
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # Ollama LLM Server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # Pull mistral model on first run:
+    # docker exec rag-ollama ollama pull mistral
+
+  # Document AI + RAG Pipeline API
+  app:
+    build: .
+    container_name: rag-pipeline
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - LOG_LEVEL=INFO
+    volumes:
+      - app_data:/app/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  app_data:
