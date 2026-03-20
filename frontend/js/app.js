@@ -241,15 +241,75 @@ async function sendQuery() {
 
         switch (state.mode) {
             case 'qa':
-                resp = await fetch(`${API_BASE}/query`, {
+                // Send history along with question
+                const historyPayload = state.history.map(h => ({
+                    role: h.mode === 'qa' ? "user" : "system",
+                    content: h.query
+                })).reverse(); // Oldest first
+
+                resp = await fetch(`${API_BASE}/query-stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: queryText }),
+                    body: JSON.stringify({ 
+                        question: queryText,
+                        history: historyPayload
+                    }),
                 });
-                result = await resp.json();
-                if (!resp.ok) throw new Error(result.detail || 'Query failed');
+
+                if (!resp.ok) {
+                    result = await resp.json();
+                    throw new Error(result.detail || 'Query failed');
+                }
+                
                 removeElement(loadingEl);
-                addAIMessage(result.answer, result.sources);
+                
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let msgEl = null;
+                let rawMarkdown = "";
+                let sourcesHtml = "";
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    const chunkStr = decoder.decode(value, { stream: true });
+                    const lines = chunkStr.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.slice(6);
+                            if (dataStr === '[DONE]') continue;
+                            
+                            try {
+                                const data = JSON.parse(dataStr);
+                                
+                                if (data.sources) {
+                                    // Initial chunk contains formatting sources
+                                    msgEl = addAIMessage('', data.sources);
+                                    
+                                    // Save the source HTML string because we'll overwrite innerHTML when parsing markdown
+                                    if (data.sources.length > 0) {
+                                        sourcesHtml = `<div class="msg__sources"><div class="msg__sources-title">Sources</div>` +
+                                            data.sources.map(s => `<div class="msg__source"><strong>${s.source}</strong> page ${s.page}</div>`).join('') +
+                                            `</div>`;
+                                    }
+                                }
+                                
+                                if (data.delta && msgEl) {
+                                    const bubble = msgEl.querySelector('.msg__bubble');
+                                    rawMarkdown += data.delta;
+                                    
+                                    // Live markdown render + append sources container at bottom
+                                    bubble.innerHTML = formatText(rawMarkdown) + sourcesHtml;
+                                    scrollToBottom();
+                                }
+                            } catch (e) {
+                                console.warn("Failed to parse SSE JSON chunk", line);
+                            }
+                        }
+                    }
+                }
                 break;
 
             case 'summary':
@@ -359,6 +419,7 @@ function addAIMessage(text, sources) {
     div.appendChild(bubble);
     els.chatMessages.appendChild(div);
     scrollToBottom();
+    return div;
 }
 
 function addJSONMessage(data, sources) {
@@ -487,7 +548,7 @@ function saveHistory(query, mode) {
         timestamp: new Date().toISOString(),
     };
     state.history.unshift(entry);
-    state.history = state.history.slice(0, 50); // keep last 50
+    state.history = state.history.slice(0, 15); // keep last 15 for memory context limits
     localStorage.setItem('docai_history', JSON.stringify(state.history));
     renderHistoryList();
 }
