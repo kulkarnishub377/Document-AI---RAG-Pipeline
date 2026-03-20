@@ -87,55 +87,88 @@ def _extract_sources(results) -> List[Dict]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Chain 1 — General Document Q&A
+# Chain 1 — General Document Q&A (Streaming & Memory)
 # ─────────────────────────────────────────────────────────────────────────────
 
-_QA_TEMPLATE = PromptTemplate(
-    input_variables=["context", "question"],
-    template="""You are a helpful document assistant.
-Answer the question using ONLY the information provided in the context below.
-If the answer is not in the context, say "I could not find this information in the provided documents."
+def _format_history(history: List[Dict[str, str]] = None) -> str:
+    if not history:
+        return ""
+    lines = ["CHAT HISTORY:"]
+    # Only take last 5 turns to not overflow context
+    for msg in history[-5:]:
+        role = "USER" if msg.get("role") == "user" else "AI"
+        lines.append(f"{role}: {msg.get('content')}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+async def stream_answer_question(query: str, results, history: List[Dict[str, str]] = None):
+    """
+    Asynchronous generator yielding SSE JSON chunks for real-time streaming.
+    Includes chat history for conversational memory.
+    """
+    import json
+    
+    if not results:
+        yield f"data: {json.dumps({'delta': 'No relevant documents found.', 'sources': []})}\n\n"
+        yield "data: [DONE]\n\n"
+        return
+
+    llm = _get_llm()
+    context = _format_context(results)
+    history_str = _format_history(history)
+    
+    prompt_text = f"""You are a helpful document assistant.
+Answer the question using ONLY the information provided in the context.
+If the answer is not in the context, say "I could not find this information."
 Always mention which source (file name and page) your answer comes from.
 
+{history_str}
 CONTEXT:
 {context}
 
 QUESTION:
-{question}
+{query}
 
-ANSWER:""",
-)
+ANSWER:"""
+
+    logger.info(f"Running Streaming Q&A chain | query: '{query[:60]}' | chunks: {len(results)}")
+
+    sources = _extract_sources(results)
+    # Yield sources first
+    yield f"data: {json.dumps({'sources': sources})}\n\n"
+
+    try:
+        async for chunk in llm.astream(prompt_text):
+            # langchain_ollama yields strings directly or AIMessageChunk
+            text = chunk if isinstance(chunk, str) else chunk.content
+            yield f"data: {json.dumps({'delta': text})}\n\n"
+    except Exception as e:
+        logger.error(f"Streaming failed: {e}")
+        yield f"data: {json.dumps({'delta': f' [Error streaming: {e}]'})}\n\n"
+
+    yield "data: [DONE]\n\n"
 
 
 def answer_question(query: str, results) -> Dict[str, Any]:
-    """
-    Answer a natural language question using retrieved document chunks.
-
-    Returns:
-        {
-          "answer":  str,
-          "sources": [{"source": str, "page": int, "excerpt": str}, ...]
-        }
-    """
+    # Keeping synchronous version for backwards compatibility
+    ...
     if not results:
         return {"answer": "No relevant documents found.", "sources": []}
 
     llm     = _get_llm()
     context = _format_context(results)
-    chain   = LLMChain(llm=llm, prompt=_QA_TEMPLATE)
-
-    logger.info(f"Running Q&A chain  |  query: '{query[:60]}'  |  "
-                f"context chunks: {len(results)}")
-
-    t0     = time.perf_counter()
-    answer = chain.invoke({"context": context, "question": query})
-    elapsed = time.perf_counter() - t0
-    logger.info(f"Q&A response generated in {elapsed:.2f}s")
-
+    
+    prompt_text = f"CONTEXT:\n{context}\n\nQUESTION:\n{query}\n\nANSWER:"
+    
+    logger.info(f"Running synchronous Q&A chain")
+    answer = llm.invoke(prompt_text)
+    
     return {
-        "answer":  answer["text"].strip(),
+        "answer":  answer.strip(),
         "sources": _extract_sources(results),
     }
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────

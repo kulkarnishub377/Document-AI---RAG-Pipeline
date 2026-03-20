@@ -87,6 +87,7 @@ async def add_timing_header(request: Request, call_next):
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="The question to ask")
+    history: List[Dict[str, str]] = Field(default_factory=list, description="Array of past messages")
 
 class SummarizeRequest(BaseModel):
     topic: Optional[str] = Field("the document", description="Topic to summarize")
@@ -209,6 +210,27 @@ def query(req: QueryRequest):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.exception("Query failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/query-stream")
+def query_stream(req: QueryRequest):
+    """
+    Stream a Q&A answer via Server-Sent Events (SSE).
+    """
+    from fastapi.responses import StreamingResponse
+    
+    try:
+        results = pipeline.get_relevant_chunks(req.question)
+        from llm.prompt_chains import stream_answer_question
+        return StreamingResponse(
+            stream_answer_question(req.question, results, req.history),
+            media_type="text/event-stream"
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception("Query stream failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 
