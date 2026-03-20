@@ -9,7 +9,7 @@ description = "Intelligent Document Q&A pipeline using local models, FAISS, and 
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    { name = "Shubham Kulkarni" }
+    { name = "Shubham Kulkarni", email = "kulkarnishub377@gmail.com" }
 ]
 requires-python = ">=3.10"
 classifiers = [
