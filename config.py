@@ -10,8 +10,8 @@ import os
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-from loguru import logger
+from dotenv import load_dotenv  # type: ignore
+from loguru import logger       # type: ignore
 
 # ── Load .env file if present ─────────────────────────────────────────────────
 load_dotenv()
