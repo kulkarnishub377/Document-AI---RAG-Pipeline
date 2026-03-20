@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from loguru import logger  # type: ignore
 
@@ -35,8 +35,8 @@ class Chunk:
 
 
 def _sha256(text: str) -> str:
-    digest_val = str(hashlib.sha256(text.encode("utf-8")).hexdigest())
-    return digest_val[0:16]
+    digest_val = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return f"{digest_val}"[0:16]
 
 
 def _split_into_sentences(text: str) -> List[str]:
@@ -82,7 +82,7 @@ def _sentences_to_chunks(sentences: List[str],
 
             # Build overlap from the tail of current chunk
             overlap_text = ""
-            for part in reversed(current_parts):
+            for part in current_parts[::-1]:
                 if len(overlap_text) + len(part) + 1 <= overlap_chars:
                     overlap_text = part + " " + overlap_text
                 else:
@@ -116,7 +116,7 @@ def _table_to_markdown(table: List[List[str]]) -> str:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-def chunk_pages(pages) -> List[Chunk]:
+def chunk_pages(pages: List[Any]) -> List[Chunk]:
     """
     Convert a list of PageData objects into a deduplicated list of Chunks.
 

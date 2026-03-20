@@ -48,7 +48,7 @@ coverage.xml
 data/uploads/
 data/index/
 data/*.log
-*.pdf
+
 *.docx
 *.png
 *.jpg
