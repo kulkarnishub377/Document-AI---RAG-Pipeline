@@ -29,6 +29,7 @@ from embedding.vector_store import (
     index_chunks,
     load_index,
     reset_index,
+    delete_source,
     similarity_search,
 )
 from ingestion.document_loader import load_document
@@ -174,7 +175,7 @@ def ingest_folder(folder: str | Path) -> List[Dict[str, Any]]:
 # QUERY  (run for every user question)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _retrieve(query: str) -> list:
+def get_relevant_chunks(query: str) -> list:
     """Shared retrieval step: FAISS search → rerank → return top chunks."""
     candidates = similarity_search(query, top_k=RETRIEVAL_TOP_K)
     if not candidates:
@@ -192,7 +193,7 @@ def query(question: str) -> Dict[str, Any]:
         print(result["sources"])
     """
     logger.info(f"QUERY: '{question}'")
-    results = _retrieve(question)
+    results = get_relevant_chunks(question)
     return answer_question(question, results)
 
 
@@ -205,7 +206,7 @@ def get_summary(topic: str = "the document") -> Dict[str, Any]:
         print(result["summary"])
     """
     logger.info(f"SUMMARY request: '{topic}'")
-    results = _retrieve(topic)
+    results = get_relevant_chunks(topic)
     return summarize(results)
 
 
@@ -223,7 +224,7 @@ def extract(fields: List[str], context_query: str = "") -> Dict[str, Any]:
     """
     search_query = context_query or " ".join(fields)
     logger.info(f"EXTRACT fields: {fields}")
-    results = _retrieve(search_query)
+    results = get_relevant_chunks(search_query)
     return extract_fields(results, fields)
 
 
@@ -236,7 +237,7 @@ def query_table(question: str) -> Dict[str, Any]:
         print(result["answer"])
     """
     logger.info(f"TABLE QUERY: '{question}'")
-    results = _retrieve(question)
+    results = get_relevant_chunks(question)
     return table_qa(question, results)
 
 
@@ -255,6 +256,13 @@ def clear_index() -> Dict[str, str]:
     """Delete the entire FAISS index and start fresh."""
     reset_index()
     return {"status": "index cleared successfully"}
+
+def delete_document(source: str) -> Dict[str, Any]:
+    """Delete a single document from the index by its filename."""
+    count = delete_source(source)
+    if count == 0:
+        raise FileNotFoundError(f"Source '{source}' not found in index.")
+    return {"status": "success", "deleted_chunks": count, "source": source}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

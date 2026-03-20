@@ -244,6 +244,45 @@ def reset_index() -> None:
     logger.info("Index reset — all vectors cleared.")
 
 
+def delete_source(source_name: str) -> int:
+    """
+    Remove all chunks belonging to a specific source document.
+    Returns the number of chunks deleted.
+    """
+    global _faiss_index, _metadata
+
+    with _lock:
+        if _faiss_index is None:
+            if FAISS_INDEX_PATH.exists():
+                load_index()
+            else:
+                return 0
+
+        # Find which indices belong to the source
+        ids_to_remove = [k for k, v in _metadata.items() if v["source"] == source_name]
+        if not ids_to_remove:
+            return 0
+
+        # Remove from FAISS index (this physically shifts the remaining vectors down)
+        sel = faiss.IDSelectorBatch(ids_to_remove)
+        _faiss_index.remove_ids(sel)
+
+        # Because FAISS IndexFlatIP shifted the remaining vectors downwards to fill the gaps,
+        # we MUST rebuild our metadata dictionary sequentially to match the new vector IDs!
+        keep_items = [v for k, v in sorted(_metadata.items()) if k not in ids_to_remove]
+        _metadata.clear()
+        for i, v in enumerate(keep_items):
+            _metadata[i] = v
+
+        # Persist updated index and metadata
+        faiss.write_index(_faiss_index, str(FAISS_INDEX_PATH))
+        with open(METADATA_PATH, "w", encoding="utf-8") as f:
+            json.dump(_metadata, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"Deleted {len(ids_to_remove)} chunks for source: {source_name}")
+        return len(ids_to_remove)
+
+
 def get_index_stats() -> dict:
     """Return basic stats about the current in-memory index."""
     global _faiss_index, _metadata
