@@ -3,12 +3,12 @@
 # ─────────────────────────────────────────
 
 # OCR + Layout
-paddlepaddle==2.6.1
-paddleocr==2.7.3
+paddlepaddle>=3.0.0
+paddleocr>=2.7.3
 
 # PDF / DOCX parsing
 pdfplumber==0.11.0
-PyMuPDF==1.24.5
+PyMuPDF>=1.24.5
 python-docx==1.1.2
 camelot-py[cv]==0.11.0       # table extraction from native PDFs
 
