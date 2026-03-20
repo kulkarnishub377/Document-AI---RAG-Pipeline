@@ -1,0 +1,61 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .dockerignore — Exclude from Docker build context to shrink image size
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Version control
+.git
+.gitignore
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env_dir/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# Tests & Docs (not needed in production image)
+tests/
+docs/
+.github/
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+CHANGELOG.md
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Data (bind-mounted at runtime)
+data/uploads/*
+data/index/*
+data/*.log
+
+# Environment files
+.env
+
+# Coverage & test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Docker files (prevent recursive builds)
+docker-compose.yml
+
+# Misc
+*.md
+!README.md
+.editorconfig
+Makefile
