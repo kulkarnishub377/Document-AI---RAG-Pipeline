@@ -28,6 +28,8 @@ const els = {
     progressContainer: $('progressContainer'),
     progressFill:   $('progressFill'),
     progressText:   $('progressText'),
+    urlForm:        $('urlForm'),
+    urlInput:       $('urlInput'),
     docList:        $('docList'),
     historyList:    $('historyList'),
     chatMessages:   $('chatMessages'),
@@ -57,6 +59,7 @@ if (typeof marked !== 'undefined' && window.hljs) {
 // ── Initialization ────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initUpload();
+    initUrlIngest();
     initTabs();
     initInput();
     initClearBtn();
@@ -157,6 +160,82 @@ async function uploadFile(file) {
     }
 
     els.fileInput.value = '';
+}
+
+function initUrlIngest() {
+    if (!els.urlForm) return;
+    
+    els.urlForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const url = els.urlInput.value.trim();
+        if (!url) return;
+        
+        // Show progress
+        els.progressContainer.style.display = 'block';
+        els.progressFill.style.width = '10%';
+        els.progressText.textContent = `Fetching URL…`;
+        
+        try {
+            els.urlForm.querySelector('button').disabled = true;
+            
+            // Simulate scrape progress
+            let progress = 10;
+            const progressInterval = setInterval(() => {
+                progress = Math.min(progress + Math.random() * 20, 90);
+                els.progressFill.style.width = `${progress}%`;
+            }, 300);
+
+            const resp = await fetch(`${API_BASE}/ingest/url`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            clearInterval(progressInterval);
+
+            if (!resp.ok) {
+                const err = await resp.json();
+                throw new Error(err.detail || 'URL Ingestion failed');
+            }
+
+            const result = await resp.json();
+
+            els.progressFill.style.width = '100%';
+            els.progressText.textContent = `✓ ${result.file} — Indexed successfully`;
+
+            // Save to local storage
+            const doc = {
+                name: result.file,
+                pages: result.pages,
+                chunks: result.chunks,
+                indexedAt: new Date().toISOString(),
+            };
+            state.documents = state.documents.filter(d => d.name !== doc.name);
+            state.documents.unshift(doc);
+            localStorage.setItem('docai_documents', JSON.stringify(state.documents));
+            renderDocList();
+
+            setTimeout(() => {
+                els.progressContainer.style.display = 'none';
+                els.progressFill.style.width = '0%';
+            }, 3000);
+
+            checkStatus();
+            els.urlInput.value = '';
+
+        } catch (err) {
+            els.progressFill.style.width = '100%';
+            els.progressFill.style.background = 'var(--red)';
+            els.progressText.textContent = `✗ Error: ${err.message}`;
+            setTimeout(() => {
+                els.progressContainer.style.display = 'none';
+                els.progressFill.style.width = '0%';
+                els.progressFill.style.background = '';
+            }, 5000);
+        } finally {
+            els.urlForm.querySelector('button').disabled = false;
+        }
+    });
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────

@@ -38,3 +38,7 @@ tqdm==4.66.4
 python-dotenv==1.0.1
 loguru==0.7.2
 pydantic==2.8.2
+
+# Web crawling
+requests>=2.31.0
+beautifulsoup4>=4.12.3

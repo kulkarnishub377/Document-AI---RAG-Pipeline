@@ -99,6 +99,9 @@ class ExtractRequest(BaseModel):
 class TableQueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Table question to ask")
 
+class UrlIngestRequest(BaseModel):
+    url: str = Field(..., description="The URL to scrape and index")
+
 class SourceInfo(BaseModel):
     source: str
     page: int
