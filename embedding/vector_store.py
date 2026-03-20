@@ -55,6 +55,10 @@ _faiss_index: Optional[faiss.Index]         = None
 _metadata:    Dict[int, dict]               = {}
 _lock = threading.Lock()
 
+from typing import Any
+_bm25_index:       Optional[Any] = None
+_bm25_corpus_ids:  List[int]     = []
+
 
 def _get_embed_model() -> SentenceTransformer:
     """Load the embedding model lazily (downloads ~90 MB on first run)."""
@@ -330,7 +334,7 @@ def delete_source(source_name: str) -> int:
     Remove all chunks belonging to a specific source document.
     Returns the number of chunks deleted.
     """
-    global _faiss_index, _metadata
+    global _faiss_index, _metadata, _bm25_index
 
     with _lock:
         if _faiss_index is None:
