@@ -7,9 +7,13 @@ A production-ready, locally-hosted Retrieval-Augmented Generation (RAG) system f
 ## ✨ Features
 
 - **100% Private:** Runs entirely on your local machine. No data leaves your system. No API costs.
-- **Multi-Format Ingestion:** Supports PDF, DOCX, TXT, MD, and scanned images (PNG, JPG, TIFF) via PaddleOCR.
+- **Advanced Hybrid Search:** Combines dense semantic search (`all-MiniLM-L6-v2` FAISS) with **BM25 keyword matching** for supreme recall, followed by `ms-marco` cross-encoder reranking for precision.
+- **Vision LLM Integration:** Uses Ollama's `llava` model to intelligently describe images, graphs, and charts (with automatic fallback to PaddleOCR).
+- **Web URL Ingestion:** Paste any link and instantly crawl, chunk, and index the entire article body using `beautifulsoup4`.
+- **Conversational Memory & Streaming:** Asks follow-up questions with context, while answers **stream in real-time** into the UI just like ChatGPT.
+- **Multi-Format Ingestion:** Supports PDF, DOCX, TXT, MD, HTML, and scanned images (PNG, JPG, TIFF).
 - **Table Extraction:** Preserves table structure during chunking, enabling you to ask quantitative questions about tabular data.
-- **Semantic Caching & Reranking:** Uses `all-MiniLM-L6-v2` for dense FAISS vector search, followed by `ms-marco-MiniLM-L6-v2` cross-encoder reranking for supreme retrieval accuracy.
+- **Single-Document Deletion:** Purge individual flawed documents from your FAISS and BM25 indexes with a single click in the UI.
 - **Four Purpose-Built Modes:**
   - 💬 **Q&A:** Ask general questions, get answers with page citations.
   - 📋 **Summarize:** Instantly condense large sections of documents by topic.
@@ -23,19 +27,22 @@ A production-ready, locally-hosted Retrieval-Augmented Generation (RAG) system f
 
 ```mermaid
 flowchart TD
-    A[Upload Doc] -->|Ingestion| B(Document Loader\nPyMuPDF / PaddleOCR / python-docx)
+    A[Upload Doc / Paste URL] -->|Ingestion| B(Document Loader\nPyMuPDF / Llava / OCR / BeautifulSoup)
     B --> C[Page Text & Tables]
     C -->|Chunking| D(Semantic Chunker)
     D --> E[Overlapping Text Chunks + Table Chunks]
     E -->|Embedding| F(Sentence Transformer\nall-MiniLM-L6-v2)
-    F --> G[(FAISS Vector DB\n+ JSON Metadata)]
+    F --> G[(FAISS Vector DB)]
+    E -->|Tokenizing| H[(BM25 Keyword Index)]
     
-    H[User Query] -->|Embedding| F
-    H -->|Search| G
-    G -->|Top 20 Chunks| I(Cross-Encoder Reranker\nms-marco-MiniLM-L6)
-    I -->|Top 5 Selected| J(LangChain + Ollama\nMistral 7B)
-    J --> K[Final Answer + Source Citations]
-    K --> L[Premium Web UI]
+    I[User Query + Chat History] -->|Embedding| F
+    I -->|Search| G
+    I -->|Search| H
+    G -->|Top K Candidates| J(Cross-Encoder Reranker\nms-marco-MiniLM-L6)
+    H -->|Top K Candidates| J
+    J -->|Top 5 Selected| K(LangChain + Ollama\nMistral 7B)
+    K -->|Real-time Streaming| L[Final Answer + Source Citations]
+    L --> M[Premium Web UI]
 ```
 
 ---
@@ -50,12 +57,13 @@ You must have **Python 3.10+** installed. Additionally, you need **Ollama** to r
 
 ### 2. Model Downloads
 
-You need to pull the language model using Ollama. Open a new terminal and run:
+You need to pull the language models using Ollama. Open a new terminal and run:
 
 ```bash
 ollama pull mistral
+ollama pull llava
 ```
-*(This will download a ~4GB, highly capable 7B parameter model. You only need to do this once.)*
+*(Mistral is used for reasoning and chat, while Llava is optionally used for Vision AI on image uploads.)*
 
 Make sure the Ollama server is running in the background:
 ```bash

@@ -15,9 +15,10 @@ Once Ollama is installed, open a command prompt or terminal and run:
 
 ```bash
 ollama pull mistral
+ollama pull llava
 ```
 
-**Note:** The `mistral` model is roughly **4.1 GB**. It requires at least 8 GB of RAM to run effectively, and ideally an Apple Silicon Mac or a PC with a dedicated Nvidia GPU.
+**Note:** The `mistral` model is roughly **4.1 GB** and is used for text reasoning. The `llava` model is roughly **4.7 GB** and is used for Vision integration (analyzing images and charts). They require at least 8 GB of RAM to run effectively, and ideally an Apple Silicon Mac or a PC with a dedicated Nvidia GPU.
 
 ### Running the Server
 Ollama usually runs as a background service automatically. However, if the frontend says "Ollama offline", you can start it manually:
