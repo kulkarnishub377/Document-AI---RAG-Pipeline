@@ -42,3 +42,6 @@ pydantic==2.8.2
 # Web crawling
 requests>=2.31.0
 beautifulsoup4>=4.12.3
+
+# Hybrid Search
+rank_bm25>=0.2.2

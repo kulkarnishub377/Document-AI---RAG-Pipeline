@@ -144,6 +144,36 @@ def _parse_image(path: Path) -> List[PageData]:
     )]
 
 
+def _parse_image_vision(path: Path) -> List[PageData]:
+    """Parse image using Vision LLM (like llava or llama3.2-vision) via Ollama, with fallback to OCR."""
+    import base64
+    from langchain_ollama import ChatOllama
+    from langchain_core.messages import HumanMessage
+    
+    with open(path, "rb") as f:
+        img_b64 = base64.b64encode(f.read()).decode("utf-8")
+        
+    try:
+        logger.info(f"Attempting Vision LLM (Llava) extraction for {path.name}")
+        llm = ChatOllama(model="llava", temperature=0)
+        msg = HumanMessage(
+            content=[
+                {"type": "text", "text": "Extract all text, data, tables, and describe any charts/graphs in this image in detail. Reply ONLY with the extracted content and description."},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
+            ]
+        )
+        response = llm.invoke([msg])
+        text = response.content.strip() if hasattr(response, "content") else str(response)
+        
+        return [PageData(
+            source=path.name, page_num=1,
+            text=text, tables=[], method="vision"
+        )]
+    except Exception as e:
+        logger.warning(f"Vision LLM failed ({e}), falling back to standard OCR for {path.name}")
+        return _parse_image(path)
+
+
 # ── Parser: DOCX ─────────────────────────────────────────────────────────────
 
 def _parse_docx(path: Path) -> List[PageData]:
@@ -268,8 +298,8 @@ def load_document(path: str | Path) -> List[PageData]:
             pages = _parse_scanned_pdf(path)
 
     elif suffix in {".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"}:
-        logger.info("→ Image file, using OCR parser")
-        pages = _parse_image(path)
+        logger.info("→ Image file, attempting Vision LLM with OCR fallback")
+        pages = _parse_image_vision(path)
 
     elif suffix in {".docx", ".doc"}:
         logger.info("→ DOCX file, using python-docx parser")
