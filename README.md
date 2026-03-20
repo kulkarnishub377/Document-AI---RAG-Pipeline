@@ -47,6 +47,19 @@
 
 ---
 
+## 🧠 How It Works
+
+RAG (Retrieval-Augmented Generation) lets an AI answer questions about your specific documents. Instead of guessing from training data, it:
+
+1. Reads and indexes your documents (text extraction + semantic embedding).
+2. When you ask a question, finds the most relevant passages (FAISS + BM25 + reranking).
+3. Feeds those passages to Mistral 7B as context.
+4. Mistral writes an answer grounded in your actual documents, with citations.
+
+Nothing leaves your machine. No API keys. No cloud.
+
+---
+
 ## 🏗️ Architecture
 
 ```
@@ -92,8 +105,8 @@ open http://localhost:8000
 
 ```bash
 # 1. Clone & install
-git clone https://github.com/your-repo/document-ai-rag.git
-cd document-ai-rag
+git clone https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline.git
+cd Document-AI---RAG-Pipeline
 pip install -r requirements.txt
 
 # 2. Pull the LLM model
@@ -103,8 +116,18 @@ ollama pull mistral
 cp .env.example .env
 # Edit .env to customize settings
 
-# 4. Run
+# 4. Run application
 python run.py
+
+> **Note on `run.py`:** This script simply starts the FastAPI server using Uvicorn based on your `.env` configuration:
+> ```python
+> # run.py
+> import uvicorn
+> from config import API_HOST, API_PORT
+> 
+> if __name__ == "__main__":
+>     uvicorn.run("api.app:app", host=API_HOST, port=API_PORT, reload=True)
+> ```
 ```
 
 Open [http://localhost:8000](http://localhost:8000) in your browser.
@@ -210,6 +233,36 @@ All settings can be configured via environment variables or a `.env` file:
 | `MAX_FILE_SIZE_MB` | `50` | Max upload size |
 
 See [`.env.example`](.env.example) for the full list.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Multi-modal: PDF with embedded images answered via LLaVA
+- [ ] Persistent conversation sessions with SQLite
+- [ ] User authentication for multi-user deployments
+- [ ] Webhook support for document change notifications
+- [ ] Evaluation dashboard using RAGAS metrics
+- [ ] Support for Excel (.xlsx) files
+
+---
+
+## 🔧 Troubleshooting
+
+**Ollama connection refused**  
+Make sure Ollama is running: `ollama serve`  
+Check it responds: `curl http://localhost:11434/api/tags`
+
+**PaddleOCR first run is slow**  
+It downloads ~45 MB of model weights on first OCR call. This is normal — subsequent runs are fast.
+
+**Out of memory during query**  
+Switch to a smaller LLM: set `OLLAMA_MODEL=llama3.2:3b` in `.env`  
+Or reduce `RETRIEVAL_TOP_K=10` to process fewer candidates.
+
+**FAISS index not found error**  
+Ingest at least one document first before querying:
+`curl -X POST http://localhost:8000/ingest -F "file=@test.pdf"`
 
 ---
 
