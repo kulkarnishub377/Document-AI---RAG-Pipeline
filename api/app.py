@@ -4,13 +4,18 @@
 #
 # Endpoints:
 #   POST /ingest          — upload and index a document
+#   POST /ingest/url      — scrape and index a web URL
+#   POST /ingest/batch    — upload multiple documents at once
 #   POST /query           — natural language Q&A
+#   POST /query-stream    — SSE streaming Q&A
 #   POST /summarize       — summarize by topic
 #   POST /extract         — structured field extraction
 #   POST /table-query     — question over tables
 #   GET  /status          — index stats + Ollama status
+#   GET  /analytics       — detailed pipeline analytics
 #   GET  /health          — liveness check
 #   POST /clear           — clear the entire index
+#   DELETE /document/{fn} — delete a single document
 #   GET  /                — serves the frontend UI
 #
 # Run:  uvicorn api.app:app --reload --host 0.0.0.0 --port 8000
@@ -25,8 +30,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -67,19 +73,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve frontend static files
+# Serve frontend static files with caching headers
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+
+# ── Custom Validation Error Handler ──────────────────────────────────────────
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """Return cleaner validation error messages."""
+    errors = []
+    for error in exc.errors():
+        field = " → ".join(str(loc) for loc in error["loc"])
+        errors.append(f"{field}: {error['msg']}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Validation error",
+            "errors": errors,
+        },
+    )
 
 
 # ── Request timing middleware ─────────────────────────────────────────────────
 
 @app.middleware("http")
-async def add_timing_header(request: Request, call_next):
+async def add_timing_and_cache_headers(request: Request, call_next):
     t0       = time.perf_counter()
     response = await call_next(request)
     elapsed  = time.perf_counter() - t0
     response.headers["X-Process-Time"] = f"{elapsed:.3f}s"
+    
+    # Add cache headers for static assets
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=3600"  # 1 hour
+    
     return response
 
 
@@ -106,6 +135,8 @@ class SourceInfo(BaseModel):
     source: str
     page: int
     excerpt: str
+    score: float = 0.0
+    chunk_type: str = "text"
 
 class QAResponse(BaseModel):
     answer: str
@@ -125,6 +156,21 @@ class StatusResponse(BaseModel):
     unique_sources: int
     sources: List[str] = []
     ollama: str
+
+
+# ── Helper: check Ollama before LLM calls ────────────────────────────────────
+
+def _require_ollama():
+    """Raise a 503 Service Unavailable if Ollama is not reachable."""
+    from llm.prompt_chains import check_ollama_connection
+    if not check_ollama_connection():
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Ollama LLM server is not reachable. "
+                "Start it with: ollama serve"
+            ),
+        )
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -151,6 +197,12 @@ def health():
 def status():
     """Return FAISS index stats and Ollama connectivity."""
     return pipeline.status()
+
+
+@app.get("/analytics")
+def analytics():
+    """Return detailed pipeline analytics including storage usage and per-source breakdown."""
+    return pipeline.get_analytics()
 
 
 @app.post("/ingest", response_model=IngestResponse)
@@ -197,6 +249,62 @@ async def ingest(file: UploadFile = File(...)):
     return result
 
 
+@app.post("/ingest/url", response_model=IngestResponse)
+async def ingest_url(req: UrlIngestRequest):
+    """
+    Scrape a web URL and add its content to the vector index.
+
+    Example (curl):
+        curl -X POST http://localhost:8000/ingest/url \\
+             -H "Content-Type: application/json" \\
+             -d '{"url": "https://example.com/article"}'
+    """
+    try:
+        result = pipeline.ingest_url(req.url)
+    except Exception as e:
+        logger.exception(f"URL ingestion failed for {req.url}")
+        raise HTTPException(status_code=500, detail=str(e))
+    return result
+
+
+@app.post("/ingest/batch")
+async def ingest_batch(files: List[UploadFile] = File(...)):
+    """
+    Upload multiple documents at once and add them all to the vector index.
+
+    Example (curl):
+        curl -X POST http://localhost:8000/ingest/batch \\
+             -F "files=@doc1.pdf" -F "files=@doc2.pdf"
+    """
+    results = []
+    for file in files:
+        allowed = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp", ".docx", ".doc", ".txt", ".md"}
+        suffix  = Path(file.filename).suffix.lower()
+
+        if suffix not in allowed:
+            results.append({"file": file.filename, "error": f"Unsupported file type: {suffix}"})
+            continue
+
+        content = await file.read()
+        size_mb = len(content) / (1024 * 1024)
+        if size_mb > MAX_FILE_SIZE_MB:
+            results.append({"file": file.filename, "error": f"Too large: {size_mb:.1f} MB"})
+            continue
+
+        save_path = UPLOAD_DIR / file.filename
+        with open(save_path, "wb") as f:
+            f.write(content)
+
+        try:
+            result = pipeline.ingest(save_path)
+            results.append(result)
+        except Exception as e:
+            logger.exception(f"Ingestion failed for {file.filename}")
+            results.append({"file": file.filename, "error": str(e)})
+
+    return {"results": results, "total": len(results), "success": sum(1 for r in results if "error" not in r)}
+
+
 @app.post("/query", response_model=QAResponse)
 def query(req: QueryRequest):
     """
@@ -207,22 +315,26 @@ def query(req: QueryRequest):
              -H "Content-Type: application/json" \\
              -d '{"question": "What is the invoice total?"}'
     """
+    _require_ollama()
     try:
         return pipeline.query(req.question)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         logger.exception("Query failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/query-stream")
-def query_stream(req: QueryRequest):
+async def query_stream(req: QueryRequest):
     """
     Stream a Q&A answer via Server-Sent Events (SSE).
     """
     from fastapi.responses import StreamingResponse
     
+    _require_ollama()
     try:
         results = pipeline.get_relevant_chunks(req.question)
         from llm.prompt_chains import stream_answer_question
@@ -232,6 +344,8 @@ def query_stream(req: QueryRequest):
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         logger.exception("Query stream failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -247,8 +361,11 @@ def summarize(req: SummarizeRequest):
              -H "Content-Type: application/json" \\
              -d '{"topic": "payment terms"}'
     """
+    _require_ollama()
     try:
         return pipeline.get_summary(req.topic)
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         logger.exception("Summarization failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -264,8 +381,11 @@ def extract(req: ExtractRequest):
              -H "Content-Type: application/json" \\
              -d '{"fields": ["invoice_number", "date", "total_amount"]}'
     """
+    _require_ollama()
     try:
         return pipeline.extract(req.fields, req.context_query)
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         logger.exception("Extraction failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -281,8 +401,11 @@ def table_query(req: TableQueryRequest):
              -H "Content-Type: application/json" \\
              -d '{"question": "What is the total in the last row?"}'
     """
+    _require_ollama()
     try:
         return pipeline.query_table(req.question)
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         logger.exception("Table query failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -299,7 +422,7 @@ def clear():
 
 @app.delete("/document/{filename}")
 def delete_document(filename: str):
-    """Delete a specific document from the index."""
+    """Delete a specific document from the index and uploads."""
     try:
         return pipeline.delete_document(filename)
     except FileNotFoundError as e:
