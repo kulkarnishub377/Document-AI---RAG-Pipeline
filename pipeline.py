@@ -144,6 +144,33 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
     }
 
 
+def ingest_url(url: str) -> Dict[str, Any]:
+    """Fetch and ingest a web URL directly into the index."""
+    from ingestion.document_loader import parse_url
+    logger.info(f"═══ INGESTION START URL: {url} ═══")
+    t0 = time.perf_counter()
+    
+    pages = parse_url(url)
+    source_name = pages[0].source
+    logger.info(f"Loaded web page: {source_name}")
+    
+    chunks = chunk_pages(pages)
+    if not chunks:
+        return {"file": source_name, "pages": 1, "chunks": 0, "index_size": get_index_stats().get("total_vectors", 0), "time_seconds": 0}
+
+    index_chunks(chunks)
+    stats = get_index_stats()
+    elapsed = round(time.perf_counter() - t0, 2)
+    
+    return {
+        "file": source_name,
+        "pages": 1,
+        "chunks": len(chunks),
+        "index_size": stats["total_vectors"],
+        "time_seconds": elapsed,
+    }
+
+
 def ingest_folder(folder: str | Path) -> List[Dict[str, Any]]:
     """
     Ingest all supported documents in a folder.

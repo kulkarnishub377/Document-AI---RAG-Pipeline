@@ -177,6 +177,46 @@ def _parse_text(path: Path) -> List[PageData]:
     )]
 
 
+# ── Parser: Web URL ──────────────────────────────────────────────────────────
+
+def parse_url(url: str) -> List[PageData]:
+    """Fetch a web page and extract the text content using BeautifulSoup."""
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+    except ImportError:
+        raise ImportError("Web crawling requires 'requests' and 'beautifulsoup4'. Run: pip install requests beautifulsoup4")
+
+    logger.info(f"Fetching URL: {url}")
+    headers = {"User-Agent": "Mozilla/5.0 Document AI RAG Pipeline"}
+    resp = requests.get(url, headers=headers, timeout=10)
+    resp.raise_for_status()
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    
+    # Remove javascript, styles, and empty tags
+    for script in soup(["script", "style", "nav", "footer", "header", "aside"]):
+        script.decompose()
+        
+    text = soup.get_text(separator="\n\n")
+    
+    # Clean up empty lines
+    lines = (line.strip() for line in text.splitlines())
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    cleaned_text = "\n".join(chunk for chunk in chunks if chunk)
+    
+    # Use the domain + title as the source name
+    from urllib.parse import urlparse
+    domain = urlparse(url).netloc
+    title = soup.title.string.strip() if soup.title else domain
+    source_name = f"{domain} - {title}"
+
+    return [PageData(
+        source=source_name, page_num=1,
+        text=cleaned_text, tables=[], method="web"
+    )]
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def load_document(path: str | Path) -> List[PageData]:
