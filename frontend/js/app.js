@@ -536,8 +536,28 @@ function renderDocList() {
             </svg>
             <span class="doc-list__name">${doc.name}</span>
             <span class="doc-list__meta">${doc.chunks}ch</span>
+            <button class="doc-delete-btn" title="Delete from index" onclick="deleteDocument('${escapeQuotes(doc.name)}')">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            </button>
         </li>
     `).join('');
+}
+
+async function deleteDocument(filename) {
+    if (!confirm(`Are you sure you want to delete "${filename}" from the AI's memory?`)) return;
+    
+    try {
+        const resp = await fetch(`${API_BASE}/document/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+        if (!resp.ok) throw new Error('Deletion failed');
+        
+        state.documents = state.documents.filter(d => d.name !== filename);
+        localStorage.setItem('docai_documents', JSON.stringify(state.documents));
+        renderDocList();
+        checkStatus();
+        
+    } catch (err) {
+        alert('Failed to delete document: ' + err.message);
+    }
 }
 
 // ── Query History ─────────────────────────────────────────────────────────
@@ -641,7 +661,7 @@ function initClearBtn() {
 
             // Show confirmation in chat
             if (els.welcomeScreen) els.welcomeScreen.style.display = 'none';
-            addAIMessage('🗑️ Index cleared. All documents have been removed. Upload new documents to start again.', []);
+            addAIMessage('🗑️ Index cleared. All documents have been permanently removed.', []);
 
         } catch (err) {
             alert('Failed to clear index: ' + err.message);

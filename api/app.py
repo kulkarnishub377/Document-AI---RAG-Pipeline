@@ -294,6 +294,17 @@ def clear():
         logger.exception("Clear failed")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/document/{filename}")
+def delete_document(filename: str):
+    """Delete a specific document from the index."""
+    try:
+        return pipeline.delete_document(filename)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Delete failed for {filename}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ── Dev runner ────────────────────────────────────────────────────────────────
 
