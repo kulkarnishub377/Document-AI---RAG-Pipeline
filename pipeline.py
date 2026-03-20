@@ -41,7 +41,7 @@ from llm.prompt_chains import (
     table_qa,
 )
 from retrieval.reranker import rerank
-from config import RETRIEVAL_TOP_K, RERANKER_TOP_K
+from config import RETRIEVAL_TOP_K, RERANKER_TOP_K, UPLOAD_DIR
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -289,7 +289,71 @@ def delete_document(source: str) -> Dict[str, Any]:
     count = delete_source(source)
     if count == 0:
         raise FileNotFoundError(f"Source '{source}' not found in index.")
+    
+    # Also delete the uploaded file if it exists
+    upload_path = UPLOAD_DIR / source
+    if upload_path.exists():
+        upload_path.unlink()
+        logger.info(f"Deleted uploaded file: {upload_path}")
+    
     return {"status": "success", "deleted_chunks": count, "source": source}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ANALYTICS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_analytics() -> Dict[str, Any]:
+    """Return comprehensive analytics about the pipeline."""
+    stats = get_index_stats()
+    
+    # Calculate storage usage
+    from config import FAISS_INDEX_PATH, METADATA_PATH, DATA_DIR
+    storage = {
+        "index_size_mb": 0,
+        "metadata_size_mb": 0,
+        "uploads_size_mb": 0,
+    }
+    
+    if FAISS_INDEX_PATH.exists():
+        storage["index_size_mb"] = round(FAISS_INDEX_PATH.stat().st_size / (1024 * 1024), 2)
+    if METADATA_PATH.exists():
+        storage["metadata_size_mb"] = round(METADATA_PATH.stat().st_size / (1024 * 1024), 2)
+    
+    uploads_dir = DATA_DIR / "uploads"
+    if uploads_dir.exists():
+        total_upload_bytes = sum(f.stat().st_size for f in uploads_dir.iterdir() if f.is_file())
+        storage["uploads_size_mb"] = round(total_upload_bytes / (1024 * 1024), 2)
+    
+    storage["total_size_mb"] = round(
+        storage["index_size_mb"] + storage["metadata_size_mb"] + storage["uploads_size_mb"],
+        2
+    )
+    
+    # Per-source breakdown
+    source_breakdown = []
+    if stats.get("sources"):
+        import json
+        try:
+            with open(METADATA_PATH, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+            
+            source_counts: Dict[str, int] = {}
+            for v in metadata.values():
+                src = v.get("source", "unknown")
+                source_counts[src] = source_counts.get(src, 0) + 1
+            
+            for source, count in sorted(source_counts.items(), key=lambda x: -x[1]):
+                source_breakdown.append({"source": source, "chunks": count})
+        except Exception:
+            pass
+    
+    return {
+        **stats,
+        "storage": storage,
+        "source_breakdown": source_breakdown,
+        "ollama": "connected" if check_ollama_connection() else "not reachable",
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -306,6 +370,7 @@ if __name__ == "__main__":
         print("  python pipeline.py <path-to-document>     Ingest and start Q&A")
         print("  python pipeline.py --status               Show index stats")
         print("  python pipeline.py --clear                Clear the entire index")
+        print("  python pipeline.py --analytics            Show analytics")
         sys.exit(0)
 
     arg = sys.argv[1]
@@ -317,6 +382,11 @@ if __name__ == "__main__":
 
     if arg == "--clear":
         print(clear_index())
+        sys.exit(0)
+
+    if arg == "--analytics":
+        import json
+        print(json.dumps(get_analytics(), indent=2))
         sys.exit(0)
 
     # Normal mode: ingest + interactive Q&A

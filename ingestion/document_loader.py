@@ -6,13 +6,15 @@
 #   • Detect file type (PDF native / PDF scanned / image / DOCX)
 #   • Route to the correct parser
 #   • Return a unified list of PageData objects (page_num, text, tables, source)
+#   • Auto-detect document language for optimal OCR
 #
 # Supported formats:
 #   PDF (native text) → pdfplumber
 #   PDF (scanned)     → PaddleOCR PP‑OCRv4
-#   Images            → PaddleOCR
+#   Images            → Vision LLM (llava) with PaddleOCR fallback
 #   DOCX              → python-docx
 #   TXT / MD          → plain read
+#   Web URLs          → BeautifulSoup
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -28,7 +30,10 @@ import fitz                          # PyMuPDF
 from docx import Document as DocxDoc
 from loguru import logger
 
-from config import OCR_LANGUAGE, OCR_USE_ANGLE_CLS, ALLOWED_EXTENSIONS, MAX_FILE_SIZE_MB
+from config import (
+    OCR_LANGUAGE, OCR_USE_ANGLE_CLS, ALLOWED_EXTENSIONS,
+    MAX_FILE_SIZE_MB, MULTILINGUAL_MODE,
+)
 
 
 # ── Data container returned by every parser ──────────────────────────────────
@@ -40,27 +45,52 @@ class PageData:
     page_num: int                    # 1-based
     text: str                        # extracted plain text
     tables: List[List[List[str]]] = field(default_factory=list)
-    method: str = "native"           # "native" | "ocr" | "docx" | "text"
+    method: str = "native"           # "native" | "ocr" | "docx" | "text" | "vision" | "web"
+    language: str = "unknown"        # auto-detected language code
+
+
+# ── Language Detection ───────────────────────────────────────────────────────
+
+def _detect_language(text: str) -> str:
+    """Detect the language of a text snippet. Returns ISO 639-1 code."""
+    if not text or len(text.strip()) < 20:
+        return "unknown"
+    try:
+        from langdetect import detect
+        return detect(text[:1000])  # Only check first 1000 chars for speed
+    except Exception:
+        return "unknown"
+
+
+def _get_ocr_lang(detected_lang: str) -> str:
+    """Map detected language code to PaddleOCR language code."""
+    lang_map = {
+        "en": "en", "hi": "hi", "mr": "mr", "ta": "ta", "te": "te",
+        "zh-cn": "ch", "zh-tw": "ch", "ja": "japan", "ko": "korean",
+        "fr": "fr", "de": "german", "es": "es", "pt": "pt",
+        "ar": "ar", "ru": "ru", "it": "it",
+    }
+    return lang_map.get(detected_lang, OCR_LANGUAGE)
 
 
 # ── Lazy-load PaddleOCR so startup is fast when OCR is not needed ────────────
 
-_ocr_engine = None
+_ocr_engines = {}
 
 
-def _get_ocr():
+def _get_ocr(lang: str = None):
     """Load PaddleOCR engine lazily (downloads ~45 MB on first run)."""
-    global _ocr_engine
-    if _ocr_engine is None:
+    lang = lang or OCR_LANGUAGE
+    if lang not in _ocr_engines:
         from paddleocr import PaddleOCR
-        logger.info("Loading PaddleOCR engine (first run downloads ~45 MB)…")
-        _ocr_engine = PaddleOCR(
+        logger.info(f"Loading PaddleOCR engine for '{lang}' (first run downloads ~45 MB)…")
+        _ocr_engines[lang] = PaddleOCR(
             use_angle_cls=OCR_USE_ANGLE_CLS,
-            lang=OCR_LANGUAGE,
+            lang=lang,
             show_log=False,
         )
-        logger.info("PaddleOCR ready.")
-    return _ocr_engine
+        logger.info(f"PaddleOCR ({lang}) ready.")
+    return _ocr_engines[lang]
 
 
 # ── Helper: is a PDF page text-selectable? ───────────────────────────────────
@@ -79,14 +109,15 @@ def _parse_native_pdf(path: Path) -> List[PageData]:
         for i, page in enumerate(pdf.pages, start=1):
             text   = page.extract_text() or ""
             tables = page.extract_tables() or []
-            # pdfplumber tables: list of rows → list of cells (str | None)
             clean_tables = [
                 [[cell or "" for cell in row] for row in tbl]
                 for tbl in tables
             ]
+            lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
             pages.append(PageData(
                 source=path.name, page_num=i,
-                text=text, tables=clean_tables, method="native"
+                text=text, tables=clean_tables, method="native",
+                language=lang,
             ))
     logger.debug(f"Native PDF parsed: {len(pages)} pages from {path.name}")
     return pages
@@ -96,9 +127,22 @@ def _parse_native_pdf(path: Path) -> List[PageData]:
 
 def _parse_scanned_pdf(path: Path) -> List[PageData]:
     """Render each PDF page as an image and run PaddleOCR on it."""
-    ocr = _get_ocr()
     doc = fitz.open(str(path))
     pages: List[PageData] = []
+
+    # Try to detect language from any native text first
+    ocr_lang = OCR_LANGUAGE
+    if MULTILINGUAL_MODE:
+        for page in doc:
+            sample_text = page.get_text("text").strip()
+            if len(sample_text) > 20:
+                detected = _detect_language(sample_text)
+                ocr_lang = _get_ocr_lang(detected)
+                break
+        doc.close()
+        doc = fitz.open(str(path))
+
+    ocr = _get_ocr(ocr_lang)
 
     for i, page in enumerate(doc, start=1):
         # Render at 2× resolution for better OCR accuracy
@@ -110,14 +154,16 @@ def _parse_scanned_pdf(path: Path) -> List[PageData]:
         lines  = []
         if result and result[0]:
             for line in result[0]:
-                # line = [ [[x1,y1],[x2,y2],[x3,y3],[x4,y4]], (text, conf) ]
                 text_str, conf = line[1]
-                if conf > 0.5:        # skip low-confidence detections
+                if conf > 0.5:
                     lines.append(text_str)
 
+        text = "\n".join(lines)
+        lang = _detect_language(text) if MULTILINGUAL_MODE else ocr_lang
         pages.append(PageData(
             source=path.name, page_num=i,
-            text="\n".join(lines), tables=[], method="ocr"
+            text=text, tables=[], method="ocr",
+            language=lang,
         ))
 
     doc.close()
@@ -138,14 +184,17 @@ def _parse_image(path: Path) -> List[PageData]:
             if conf > 0.5:
                 lines.append(text_str)
 
+    text = "\n".join(lines)
+    lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
     return [PageData(
         source=path.name, page_num=1,
-        text="\n".join(lines), tables=[], method="ocr"
+        text=text, tables=[], method="ocr",
+        language=lang,
     )]
 
 
 def _parse_image_vision(path: Path) -> List[PageData]:
-    """Parse image using Vision LLM (like llava or llama3.2-vision) via Ollama, with fallback to OCR."""
+    """Parse image using Vision LLM (like llava) via Ollama, with fallback to OCR."""
     import base64
     from langchain_ollama import ChatOllama
     from langchain_core.messages import HumanMessage
@@ -164,10 +213,12 @@ def _parse_image_vision(path: Path) -> List[PageData]:
         )
         response = llm.invoke([msg])
         text = response.content.strip() if hasattr(response, "content") else str(response)
+        lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
         
         return [PageData(
             source=path.name, page_num=1,
-            text=text, tables=[], method="vision"
+            text=text, tables=[], method="vision",
+            language=lang,
         )]
     except Exception as e:
         logger.warning(f"Vision LLM failed ({e}), falling back to standard OCR for {path.name}")
@@ -190,9 +241,12 @@ def _parse_docx(path: Path) -> List[PageData]:
         if rows:
             tables.append(rows)
 
+    text = "\n".join(paras)
+    lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
     return [PageData(
         source=path.name, page_num=1,
-        text="\n".join(paras), tables=tables, method="docx"
+        text=text, tables=tables, method="docx",
+        language=lang,
     )]
 
 
@@ -201,9 +255,11 @@ def _parse_docx(path: Path) -> List[PageData]:
 def _parse_text(path: Path) -> List[PageData]:
     """Read a plain text or markdown file."""
     text = path.read_text(encoding="utf-8", errors="replace")
+    lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
     return [PageData(
         source=path.name, page_num=1,
-        text=text, tables=[], method="text"
+        text=text, tables=[], method="text",
+        language=lang,
     )]
 
 
@@ -240,10 +296,12 @@ def parse_url(url: str) -> List[PageData]:
     domain = urlparse(url).netloc
     title = soup.title.string.strip() if soup.title else domain
     source_name = f"{domain} - {title}"
+    lang = _detect_language(cleaned_text) if MULTILINGUAL_MODE else "en"
 
     return [PageData(
         source=source_name, page_num=1,
-        text=cleaned_text, tables=[], method="web"
+        text=cleaned_text, tables=[], method="web",
+        language=lang,
     )]
 
 
@@ -318,8 +376,10 @@ def load_document(path: str | Path) -> List[PageData]:
     elapsed = time.perf_counter() - t0
     total_chars = sum(len(p.text) for p in pages)
     total_tables = sum(len(p.tables) for p in pages)
+    detected_langs = {p.language for p in pages if p.language != "unknown"}
     logger.info(
         f"Document loaded in {elapsed:.2f}s — "
         f"{len(pages)} pages, {total_chars:,} chars, {total_tables} tables"
+        f"{f', languages: {detected_langs}' if detected_langs else ''}"
     )
     return pages

@@ -7,6 +7,7 @@
 #   • Attach rich metadata to every chunk (source, page, chunk_id, hash)
 #   • Keep tables as single atomic chunks (never split a table mid-row)
 #   • Deduplicate chunks by content hash
+#   • Support non-English documents with Unicode sentence boundaries
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -19,6 +20,10 @@ from typing import Any, List, Optional
 from loguru import logger  # type: ignore
 
 from config import CHUNK_SIZE, CHUNK_OVERLAP  # type: ignore
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ingestion.document_loader import PageData
 
 
 # ── Output data container ────────────────────────────────────────────────────
@@ -36,17 +41,43 @@ class Chunk:
 
 def _sha256(text: str) -> str:
     digest_val = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    return f"{digest_val}"[:16]  # type: ignore
+    return f"{digest_val}"[:16]
 
 
 def _split_into_sentences(text: str) -> List[str]:
     """
-    Simple sentence splitter using punctuation boundaries.
-    Avoids splitting on abbreviations like 'Dr.' or 'e.g.' by
-    requiring the following token to start with a capital letter or digit.
+    Unicode-aware sentence splitter.
+    
+    First tries English-style splitting on punctuation boundaries.
+    Falls back to splitting on common Unicode sentence terminators
+    for non-English text (Hindi, Chinese, Japanese, Arabic, etc.).
     """
-    pattern = r'(?<=[.!?])\s+(?=[A-Z0-9])'
-    sentences = re.split(pattern, text.strip())
+    text = text.strip()
+    if not text:
+        return []
+
+    # English-style: split after .!? followed by whitespace and capital letter/digit
+    english_pattern = r'(?<=[.!?])\s+(?=[A-Z0-9])'
+    sentences = re.split(english_pattern, text)
+    
+    # If English splitting didn't produce multiple sentences, try Unicode boundaries
+    if len(sentences) <= 1 and len(text) > CHUNK_SIZE:
+        # Unicode sentence terminators: 
+        # Hindi/Devanagari: । (purna viram)
+        # Chinese/Japanese: 。！？
+        # Arabic: ۔
+        # Standard: .!?
+        unicode_pattern = r'(?<=[।。！？۔.!?])\s*'
+        sentences = re.split(unicode_pattern, text)
+    
+    # Last resort: if still one huge blob, split on newlines
+    if len(sentences) <= 1 and len(text) > CHUNK_SIZE:
+        sentences = text.split('\n')
+    
+    # Final fallback: split on any double-space or long whitespace
+    if len(sentences) <= 1 and len(text) > CHUNK_SIZE:
+        sentences = re.split(r'\s{2,}', text)
+
     return [s.strip() for s in sentences if s.strip()]
 
 
@@ -82,16 +113,16 @@ def _sentences_to_chunks(sentences: List[str],
 
             # Build overlap from the tail of current chunk
             overlap_text = ""
-            for part in reversed(current_parts):  # type: ignore
+            for part in reversed(current_parts):
                 if len(overlap_text) + len(part) + 1 <= overlap_chars:
                     overlap_text = part + " " + overlap_text
                 else:
                     break
             new_parts: List[str] = [overlap_text.strip()] if overlap_text.strip() else []
-            current_parts = new_parts  # type: ignore
+            current_parts = new_parts
             current_len = len(overlap_text)
 
-        current_parts.append(sent)  # type: ignore
+        current_parts.append(sent)
         current_len += (sent_len + 1)
 
     if current_parts:
@@ -116,7 +147,7 @@ def _table_to_markdown(table: List[List[str]]) -> str:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-def chunk_pages(pages: List[Any]) -> List[Chunk]:
+def chunk_pages(pages: List[PageData]) -> List[Chunk]:
     """
     Convert a list of PageData objects into a deduplicated list of Chunks.
 
@@ -136,7 +167,7 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
     global_idx: int = 0
     skipped: int = 0
 
-    for page in pages:  # type: ignore
+    for page in pages:
         chunk_idx_on_page: int = 0
 
         # ── Text chunks ──────────────────────────────────────────────────
@@ -147,7 +178,7 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
             for seg in text_segments:
                 h = _sha256(seg)
                 if h in seen_hashes:
-                    skipped += 1  # type: ignore
+                    skipped += 1
                     continue
                 seen_hashes.add(h)
 
@@ -159,8 +190,8 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
                     text       = seg,
                     chunk_type = "text",
                 ))
-                chunk_idx_on_page += 1  # type: ignore
-                global_idx += 1         # type: ignore
+                chunk_idx_on_page += 1
+                global_idx += 1
 
         # ── Table chunks (kept atomic — never split a table) ─────────────
         for tbl in page.tables:
@@ -169,7 +200,7 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
                 continue
             h = _sha256(md)
             if h in seen_hashes:
-                skipped += 1  # type: ignore
+                skipped += 1
                 continue
             seen_hashes.add(h)
 
@@ -181,8 +212,8 @@ def chunk_pages(pages: List[Any]) -> List[Chunk]:
                 text       = md,
                 chunk_type = "table",
             ))
-            chunk_idx_on_page += 1  # type: ignore
-            global_idx += 1         # type: ignore
+            chunk_idx_on_page += 1
+            global_idx += 1
 
     text_chunks  = sum(1 for c in all_chunks if c.chunk_type == "text")
     table_chunks = sum(1 for c in all_chunks if c.chunk_type == "table")
