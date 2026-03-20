@@ -1,12 +1,17 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Document AI + RAG Pipeline — Frontend Application
+// Document AI + RAG Pipeline — Frontend Application v2.0
 //
 // Features:
-//   • File upload via drag & drop or click
-//   • Real-time chat interface with 4 modes (Q&A, Summary, Extract, Table)
+//   • File upload via drag & drop or click (multi-file support)
+//   • Real-time streaming chat with 4 modes (Q&A, Summary, Extract, Table)
+//   • XSS-safe rendering with HTML entity escaping
+//   • Confidence score display in source citations
+//   • Citation click-through to view full chunk text
+//   • Export conversation as Markdown
+//   • Analytics dashboard modal
+//   • Document preview on hover
 //   • Local storage for query history
 //   • Status polling & Ollama connectivity indicator
-//   • Source citations display
 // ═══════════════════════════════════════════════════════════════════════════
 
 const API_BASE = window.location.origin;
@@ -17,6 +22,7 @@ const state = {
     isProcessing: false,
     history: JSON.parse(localStorage.getItem('docai_history') || '[]'),
     documents: JSON.parse(localStorage.getItem('docai_documents') || '[]'),
+    conversation: [],          // for export
 };
 
 // ── DOM References ────────────────────────────────────────────────────────
@@ -42,7 +48,23 @@ const els = {
     fieldsInput:    $('fieldsInput'),
     fieldsField:    $('fieldsField'),
     modeTabs:       $('modeTabs'),
+    exportBtn:      $('exportBtn'),
+    analyticsBtn:   $('analyticsBtn'),
+    citationModal:  $('citationModal'),
+    citationModalTitle: $('citationModalTitle'),
+    citationModalBody:  $('citationModalBody'),
+    citationModalClose: $('citationModalClose'),
+    analyticsModal: $('analyticsModal'),
+    analyticsModalBody: $('analyticsModalBody'),
+    analyticsModalClose: $('analyticsModalClose'),
 };
+
+// ── XSS Protection ───────────────────────────────────────────────────────
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
 
 // Configure marked.js with highlight.js integration
 if (typeof marked !== 'undefined' && window.hljs) {
@@ -63,6 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     initInput();
     initClearBtn();
+    initExportBtn();
+    initAnalyticsBtn();
+    initModals();
     renderDocList();
     renderHistoryList();
     checkStatus();
@@ -76,7 +101,12 @@ function initUpload() {
 
     zone.addEventListener('click', () => input.click());
     input.addEventListener('change', (e) => {
-        if (e.target.files.length) uploadFile(e.target.files[0]);
+        if (e.target.files.length) {
+            // Multi-file support
+            for (const file of e.target.files) {
+                uploadFile(file);
+            }
+        }
     });
 
     // Drag & drop
@@ -88,7 +118,9 @@ function initUpload() {
     zone.addEventListener('drop', (e) => {
         e.preventDefault();
         zone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+        for (const file of e.dataTransfer.files) {
+            uploadFile(file);
+        }
     });
 }
 
@@ -99,7 +131,7 @@ async function uploadFile(file) {
     // Show progress
     els.progressContainer.style.display = 'block';
     els.progressFill.style.width = '10%';
-    els.progressText.textContent = `Uploading ${file.name}…`;
+    els.progressText.textContent = `Uploading ${escapeHtml(file.name)}…`;
 
     try {
         // Simulate progress during upload
@@ -126,7 +158,7 @@ async function uploadFile(file) {
         const result = await resp.json();
 
         els.progressFill.style.width = '100%';
-        els.progressText.textContent = `✓ ${result.file} — ${result.chunks} chunks indexed in ${result.time_seconds}s`;
+        els.progressText.textContent = `✓ ${escapeHtml(result.file)} — ${result.chunks} chunks indexed in ${result.time_seconds}s`;
 
         // Save to local storage
         const doc = {
@@ -201,7 +233,7 @@ function initUrlIngest() {
             const result = await resp.json();
 
             els.progressFill.style.width = '100%';
-            els.progressText.textContent = `✓ ${result.file} — Indexed successfully`;
+            els.progressText.textContent = `✓ ${escapeHtml(result.file)} — Indexed successfully`;
 
             // Save to local storage
             const doc = {
@@ -307,6 +339,7 @@ async function sendQuery() {
                       state.mode === 'table'   ? `📊 Table: ${queryText}` :
                       queryText;
     addMessage('user', userLabel);
+    state.conversation.push({ role: 'user', content: userLabel });
 
     // Show loading
     const loadingEl = addLoading();
@@ -346,7 +379,7 @@ async function sendQuery() {
                 const decoder = new TextDecoder("utf-8");
                 let msgEl = null;
                 let rawMarkdown = "";
-                let sourcesHtml = "";
+                let sourcesData = [];
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -364,22 +397,16 @@ async function sendQuery() {
                                 const data = JSON.parse(dataStr);
                                 
                                 if (data.sources) {
-                                    // Initial chunk contains formatting sources
+                                    sourcesData = data.sources;
                                     msgEl = addAIMessage('', data.sources);
-                                    
-                                    // Save the source HTML string because we'll overwrite innerHTML when parsing markdown
-                                    if (data.sources.length > 0) {
-                                        sourcesHtml = `<div class="msg__sources"><div class="msg__sources-title">Sources</div>` +
-                                            data.sources.map(s => `<div class="msg__source"><strong>${s.source}</strong> page ${s.page}</div>`).join('') +
-                                            `</div>`;
-                                    }
                                 }
                                 
                                 if (data.delta && msgEl) {
                                     const bubble = msgEl.querySelector('.msg__bubble');
                                     rawMarkdown += data.delta;
                                     
-                                    // Live markdown render + append sources container at bottom
+                                    // Re-render markdown + re-append sources
+                                    const sourcesHtml = buildSourcesHtml(sourcesData);
                                     bubble.innerHTML = formatText(rawMarkdown) + sourcesHtml;
                                     scrollToBottom();
                                 }
@@ -389,6 +416,7 @@ async function sendQuery() {
                         }
                     }
                 }
+                state.conversation.push({ role: 'ai', content: rawMarkdown });
                 break;
 
             case 'summary':
@@ -401,6 +429,7 @@ async function sendQuery() {
                 if (!resp.ok) throw new Error(result.detail || 'Summarization failed');
                 removeElement(loadingEl);
                 addAIMessage(result.summary, result.sources);
+                state.conversation.push({ role: 'ai', content: result.summary });
                 break;
 
             case 'extract':
@@ -420,6 +449,7 @@ async function sendQuery() {
                 if (!resp.ok) throw new Error(result.detail || 'Extraction failed');
                 removeElement(loadingEl);
                 addJSONMessage(result.fields, result.sources);
+                state.conversation.push({ role: 'ai', content: JSON.stringify(result.fields, null, 2) });
                 break;
 
             case 'table':
@@ -432,6 +462,7 @@ async function sendQuery() {
                 if (!resp.ok) throw new Error(result.detail || 'Table query failed');
                 removeElement(loadingEl);
                 addAIMessage(result.answer, result.sources);
+                state.conversation.push({ role: 'ai', content: result.answer });
                 break;
         }
 
@@ -447,6 +478,55 @@ async function sendQuery() {
     els.sendBtn.disabled = false;
 }
 
+// ── Source Citation Builder ───────────────────────────────────────────────
+function getConfidenceClass(score) {
+    if (score >= 0.7) return 'confidence--high';
+    if (score >= 0.4) return 'confidence--medium';
+    return 'confidence--low';
+}
+
+function getConfidenceLabel(score) {
+    if (score >= 0.7) return 'High';
+    if (score >= 0.4) return 'Medium';
+    return 'Low';
+}
+
+function buildSourcesHtml(sources) {
+    if (!sources || sources.length === 0) return '';
+    
+    return `<div class="msg__sources"><div class="msg__sources-title">Sources</div>` +
+        sources.map((s, idx) => {
+            const scoreNum = s.score || 0;
+            const confClass = getConfidenceClass(scoreNum);
+            const confLabel = getConfidenceLabel(scoreNum);
+            const excerpt = escapeHtml(s.excerpt || '');
+            return `<div class="msg__source" data-source-idx="${idx}" onclick="showCitationDetail(${JSON.stringify(escapeHtml(s.source)).replace(/"/g, '&quot;')}, ${s.page}, ${JSON.stringify(excerpt).replace(/"/g, '&quot;')}, ${scoreNum})">
+                <div class="msg__source-header">
+                    <strong>${escapeHtml(s.source)}</strong>
+                    <span class="msg__source-page">page ${s.page}</span>
+                    <span class="confidence-badge ${confClass}" title="Confidence: ${scoreNum.toFixed(3)}">${confLabel}</span>
+                </div>
+            </div>`;
+        }).join('') + `</div>`;
+}
+
+// ── Citation Detail Modal ─────────────────────────────────────────────────
+function showCitationDetail(source, page, excerpt, score) {
+    els.citationModalTitle.textContent = `${source} — Page ${page}`;
+    els.citationModalBody.innerHTML = `
+        <div class="citation-detail">
+            <div class="citation-detail__meta">
+                <span class="confidence-badge ${getConfidenceClass(score)}">
+                    Confidence: ${score.toFixed(3)} (${getConfidenceLabel(score)})
+                </span>
+            </div>
+            <div class="citation-detail__text">${formatText(excerpt)}</div>
+        </div>
+    `;
+    els.citationModal.style.display = 'flex';
+}
+window.showCitationDetail = showCitationDetail;
+
 // ── Message Rendering ─────────────────────────────────────────────────────
 function addMessage(type, text) {
     const div = document.createElement('div');
@@ -458,7 +538,7 @@ function addMessage(type, text) {
 
     const bubble = document.createElement('div');
     bubble.className = 'msg__bubble';
-    bubble.textContent = text;
+    bubble.textContent = text; // textContent is XSS-safe
 
     div.appendChild(avatar);
     div.appendChild(bubble);
@@ -479,19 +559,13 @@ function addAIMessage(text, sources) {
     const bubble = document.createElement('div');
     bubble.className = 'msg__bubble';
 
-    // Format text (simple markdown-like)
+    // Format text (markdown)
     const formattedText = formatText(text);
     bubble.innerHTML = formattedText;
 
-    // Add sources
+    // Add sources with confidence scores
     if (sources && sources.length > 0) {
-        const sourcesDiv = document.createElement('div');
-        sourcesDiv.className = 'msg__sources';
-        sourcesDiv.innerHTML = `<div class="msg__sources-title">Sources</div>` +
-            sources.map(s =>
-                `<div class="msg__source"><strong>${s.source}</strong> page ${s.page}</div>`
-            ).join('');
-        bubble.appendChild(sourcesDiv);
+        bubble.innerHTML += buildSourcesHtml(sources);
     }
 
     div.appendChild(avatar);
@@ -518,13 +592,7 @@ function addJSONMessage(data, sources) {
     bubble.appendChild(jsonDiv);
 
     if (sources && sources.length > 0) {
-        const sourcesDiv = document.createElement('div');
-        sourcesDiv.className = 'msg__sources';
-        sourcesDiv.innerHTML = `<div class="msg__sources-title">Sources</div>` +
-            sources.map(s =>
-                `<div class="msg__source"><strong>${s.source}</strong> page ${s.page}</div>`
-            ).join('');
-        bubble.appendChild(sourcesDiv);
+        bubble.innerHTML += buildSourcesHtml(sources);
     }
 
     div.appendChild(avatar);
@@ -564,12 +632,8 @@ function formatText(text) {
         return marked.parse(text);
     }
     
-    // Fallback naive rendering
-    let html = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-
+    // Fallback naive rendering (XSS-safe)
+    let html = escapeHtml(text);
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
     html = html.replace(/^[•\-\*]\s+(.+)$/gm, '<li>$1</li>');
@@ -580,11 +644,7 @@ function formatText(text) {
 }
 
 function syntaxHighlightJSON(json) {
-    json = json
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-
+    json = escapeHtml(json);
     return json.replace(
         /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
         (match) => {
@@ -608,18 +668,20 @@ function renderDocList() {
         return;
     }
 
-    els.docList.innerHTML = state.documents.map(doc => `
-        <li class="doc-list__item" title="${doc.name} — ${doc.pages} pages, ${doc.chunks} chunks">
+    els.docList.innerHTML = state.documents.map(doc => {
+        const safeName = escapeHtml(doc.name);
+        return `
+        <li class="doc-list__item" title="${safeName} — ${doc.pages} pages, ${doc.chunks} chunks">
             <svg class="doc-list__icon" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
             </svg>
-            <span class="doc-list__name">${doc.name}</span>
+            <span class="doc-list__name">${safeName}</span>
             <span class="doc-list__meta">${doc.chunks}ch</span>
-            <button class="doc-delete-btn" title="Delete from index" onclick="deleteDocument('${escapeQuotes(doc.name)}')">
+            <button class="doc-delete-btn" title="Delete from index" onclick="deleteDocument('${safeName.replace(/'/g, "\\'")}')">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
             </button>
-        </li>
-    `).join('');
+        </li>`;
+    }).join('');
 }
 
 async function deleteDocument(filename) {
@@ -647,7 +709,7 @@ function saveHistory(query, mode) {
         timestamp: new Date().toISOString(),
     };
     state.history.unshift(entry);
-    state.history = state.history.slice(0, 15); // keep last 15 for memory context limits
+    state.history = state.history.slice(0, 15);
     localStorage.setItem('docai_history', JSON.stringify(state.history));
     renderHistoryList();
 }
@@ -660,25 +722,18 @@ function renderHistoryList() {
 
     els.historyList.innerHTML = state.history.slice(0, 15).map(h => {
         const icon = h.mode === 'summary' ? '📋' : h.mode === 'extract' ? '🔧' : h.mode === 'table' ? '📊' : '❓';
-        return `<li class="history-list__item" title="${h.query}" onclick="replayQuery('${escapeQuotes(h.query)}', '${h.mode}')">${icon} ${h.query}</li>`;
+        const safeQuery = escapeHtml(h.query);
+        return `<li class="history-list__item" title="${safeQuery}" onclick="replayQuery('${safeQuery.replace(/'/g, "\\'")}', '${h.mode}')">${icon} ${safeQuery}</li>`;
     }).join('');
 }
 
-function escapeQuotes(str) {
-    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
 function replayQuery(query, mode) {
-    // Switch to the correct tab
     const tab = document.querySelector(`[data-mode="${mode}"]`);
     if (tab) tab.click();
-
     els.queryInput.value = query;
     els.queryInput.dispatchEvent(new Event('input'));
     els.queryInput.focus();
 }
-
-// Make replayQuery available globally
 window.replayQuery = replayQuery;
 
 // ── Status ────────────────────────────────────────────────────────────────
@@ -708,7 +763,6 @@ async function checkStatus() {
         // Sync document list from index
         if (data.sources && data.sources.length > 0) {
             const indexed = new Set(data.sources);
-            // add any indexed docs not already in local state
             data.sources.forEach(name => {
                 if (!state.documents.find(d => d.name === name)) {
                     state.documents.push({ name, pages: '?', chunks: '?', indexedAt: '' });
@@ -738,12 +792,166 @@ function initClearBtn() {
             renderDocList();
             checkStatus();
 
-            // Show confirmation in chat
             if (els.welcomeScreen) els.welcomeScreen.style.display = 'none';
             addAIMessage('🗑️ Index cleared. All documents have been permanently removed.', []);
 
         } catch (err) {
             alert('Failed to clear index: ' + err.message);
+        }
+    });
+}
+
+// ── Export Conversation ───────────────────────────────────────────────────
+function initExportBtn() {
+    if (!els.exportBtn) return;
+    els.exportBtn.addEventListener('click', () => {
+        if (state.conversation.length === 0) {
+            alert('No conversation to export yet.');
+            return;
+        }
+        
+        let md = `# Document AI — Conversation Export\n`;
+        md += `*Exported on ${new Date().toLocaleString()}*\n\n---\n\n`;
+        
+        for (const msg of state.conversation) {
+            if (msg.role === 'user') {
+                md += `## 🧑 User\n${msg.content}\n\n`;
+            } else {
+                md += `## 🤖 AI\n${msg.content}\n\n`;
+            }
+            md += `---\n\n`;
+        }
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(md).then(() => {
+            const origText = els.exportBtn.innerHTML;
+            els.exportBtn.innerHTML = `<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Copied!`;
+            setTimeout(() => { els.exportBtn.innerHTML = origText; }, 2000);
+        }).catch(() => {
+            // Fallback: download as file
+            const blob = new Blob([md], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'conversation_export.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    });
+}
+
+// ── Analytics Modal ──────────────────────────────────────────────────────
+function initAnalyticsBtn() {
+    if (!els.analyticsBtn) return;
+    els.analyticsBtn.addEventListener('click', async () => {
+        els.analyticsModal.style.display = 'flex';
+        els.analyticsModalBody.innerHTML = '<p style="text-align:center;padding:2rem;">Loading analytics…</p>';
+        
+        try {
+            const resp = await fetch(`${API_BASE}/analytics`);
+            if (!resp.ok) throw new Error('Failed to fetch analytics');
+            const data = await resp.json();
+            
+            const storage = data.storage || {};
+            const breakdown = data.source_breakdown || [];
+            
+            let html = `
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-card__value">${data.total_vectors || 0}</div>
+                        <div class="analytics-card__label">Total Vectors</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card__value">${data.unique_sources || 0}</div>
+                        <div class="analytics-card__label">Documents</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card__value">${data.dimension || 0}</div>
+                        <div class="analytics-card__label">Dimensions</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-card__value">${storage.total_size_mb || 0} MB</div>
+                        <div class="analytics-card__label">Total Storage</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin:1.5rem 0 0.75rem;color:var(--text-primary);">Storage Breakdown</h4>
+                <div class="analytics-storage">
+                    <div class="analytics-storage__item">
+                        <span>FAISS Index</span>
+                        <span>${storage.index_size_mb || 0} MB</span>
+                    </div>
+                    <div class="analytics-storage__item">
+                        <span>Metadata</span>
+                        <span>${storage.metadata_size_mb || 0} MB</span>
+                    </div>
+                    <div class="analytics-storage__item">
+                        <span>Uploaded Files</span>
+                        <span>${storage.uploads_size_mb || 0} MB</span>
+                    </div>
+                </div>
+                
+                <h4 style="margin:1.5rem 0 0.75rem;color:var(--text-primary);">Ollama Status</h4>
+                <div class="analytics-status">
+                    <span class="status-dot ${data.ollama === 'connected' ? 'online' : 'offline'}"></span>
+                    ${data.ollama === 'connected' ? 'Connected' : 'Not Reachable — run: ollama serve'}
+                </div>`;
+            
+            if (breakdown.length > 0) {
+                html += `
+                <h4 style="margin:1.5rem 0 0.75rem;color:var(--text-primary);">Document Breakdown</h4>
+                <div class="analytics-table">
+                    <div class="analytics-table__header">
+                        <span>Source</span>
+                        <span>Chunks</span>
+                    </div>
+                    ${breakdown.map(b => `
+                    <div class="analytics-table__row">
+                        <span>${escapeHtml(b.source)}</span>
+                        <span class="analytics-table__count">${b.chunks}</span>
+                    </div>`).join('')}
+                </div>`;
+            }
+            
+            els.analyticsModalBody.innerHTML = html;
+            
+        } catch (err) {
+            els.analyticsModalBody.innerHTML = `<p style="color:var(--red);padding:2rem;">Error: ${escapeHtml(err.message)}</p>`;
+        }
+    });
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────
+function initModals() {
+    // Citation modal
+    if (els.citationModalClose) {
+        els.citationModalClose.addEventListener('click', () => {
+            els.citationModal.style.display = 'none';
+        });
+    }
+    if (els.citationModal) {
+        els.citationModal.addEventListener('click', (e) => {
+            if (e.target === els.citationModal) els.citationModal.style.display = 'none';
+        });
+    }
+    
+    // Analytics modal
+    if (els.analyticsModalClose) {
+        els.analyticsModalClose.addEventListener('click', () => {
+            els.analyticsModal.style.display = 'none';
+        });
+    }
+    if (els.analyticsModal) {
+        els.analyticsModal.addEventListener('click', (e) => {
+            if (e.target === els.analyticsModal) els.analyticsModal.style.display = 'none';
+        });
+    }
+    
+    // Close modals with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (els.citationModal) els.citationModal.style.display = 'none';
+            if (els.analyticsModal) els.analyticsModal.style.display = 'none';
         }
     });
 }

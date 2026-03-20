@@ -838,6 +838,324 @@ body {
     color: var(--text-muted);
 }
 
+/* ── URL Ingest Form ──────────────────────────────────────────────────── */
+.url-ingest {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.url-ingest__input {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.url-ingest__input:focus { border-color: var(--accent); }
+.url-ingest__input::placeholder { color: var(--text-dim); }
+
+.url-ingest__btn {
+    width: 34px; height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.url-ingest__btn:hover { transform: scale(1.05); box-shadow: var(--shadow-glow); }
+.url-ingest__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Document Delete Button ──────────────────────────────────────────── */
+.doc-delete-btn {
+    width: 20px; height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+}
+.doc-delete-btn svg { width: 14px; height: 14px; }
+.doc-list__item:hover .doc-delete-btn { opacity: 1; }
+.doc-delete-btn:hover { color: var(--red); }
+
+/* ── Confidence Badges ───────────────────────────────────────────────── */
+.confidence-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+
+.confidence--high {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.confidence--medium {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--amber);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.confidence--low {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--red);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ── Updated Source Styles (clickable) ────────────────────────────────── */
+.msg__source {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding: 6px 8px;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: background 0.2s;
+    display: block;
+}
+
+.msg__source:hover {
+    background: var(--bg-hover);
+}
+
+.msg__source-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.msg__source-page {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+}
+
+/* ── Input Area Actions ──────────────────────────────────────────────── */
+.input-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+}
+
+.btn--xs {
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    gap: 4px;
+}
+
+/* ── Sidebar Actions ─────────────────────────────────────────────────── */
+.sidebar__actions {
+    display: flex;
+    gap: 4px;
+}
+
+/* ── Modal Overlays ──────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: modal-fadein 0.2s ease;
+}
+
+@keyframes modal-fadein {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 90%;
+    max-width: 520px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: modal-slidein 0.25s ease;
+}
+
+.modal--wide {
+    max-width: 680px;
+}
+
+@keyframes modal-slidein {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+.modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal__close {
+    width: 32px; height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    border-radius: var(--radius-xs);
+    transition: all 0.2s;
+}
+.modal__close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.modal__body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* ── Citation Detail ─────────────────────────────────────────────────── */
+.citation-detail__meta {
+    margin-bottom: 16px;
+}
+
+.citation-detail__text {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* ── Analytics ────────────────────────────────────────────────────────── */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.analytics-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+}
+
+.analytics-card__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-light);
+    margin-bottom: 4px;
+}
+
+.analytics-card__label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.analytics-storage {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.analytics-storage__item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-xs);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.analytics-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.analytics-table {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.analytics-table__header,
+.analytics-table__row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+}
+
+.analytics-table__header {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+}
+
+.analytics-table__row {
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.analytics-table__row:last-child { border-bottom: none; }
+.analytics-table__row:hover { background: var(--bg-hover); }
+
+.analytics-table__count {
+    font-weight: 600;
+    color: var(--accent-light);
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .sidebar {

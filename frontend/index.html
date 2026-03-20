@@ -35,13 +35,13 @@
                 </div>
                 <div>
                     <h1 class="sidebar__title">Document AI</h1>
-                    <p class="sidebar__subtitle">RAG Pipeline</p>
+                    <p class="sidebar__subtitle">RAG Pipeline v2.0</p>
                 </div>
             </div>
 
             <!-- Upload Zone -->
             <div class="upload-zone" id="uploadZone">
-                <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.docx,.doc,.txt,.md" hidden>
+                <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.docx,.doc,.txt,.md" hidden multiple>
                 <div class="upload-zone__icon">
                     <svg viewBox="0 0 48 48" fill="none"><path d="M24 32V16m0 0l-6 6m6-6l6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 30v4a4 4 0 01-4 4H12a4 4 0 01-4-4v-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
                 </div>
@@ -93,9 +93,14 @@
                     <span class="status-dot" id="statusDot"></span>
                     <span id="statusText">Checking…</span>
                 </div>
-                <button class="btn btn--ghost btn--sm" id="clearBtn" title="Clear all indexed documents">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                </button>
+                <div class="sidebar__actions">
+                    <button class="btn btn--ghost btn--sm" id="analyticsBtn" title="View analytics">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+                    </button>
+                    <button class="btn btn--ghost btn--sm" id="clearBtn" title="Clear all indexed documents">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    </button>
+                </div>
             </div>
         </aside>
 
@@ -172,9 +177,39 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     </button>
                 </div>
-                <p class="input-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</p>
+                <div class="input-actions">
+                    <p class="input-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</p>
+                    <button class="btn btn--ghost btn--xs" id="exportBtn" title="Export conversation as Markdown">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                        Export
+                    </button>
+                </div>
             </div>
         </main>
+    </div>
+
+    <!-- ── Citation Detail Modal ────────────────────────────────────────── -->
+    <div class="modal-overlay" id="citationModal" style="display:none">
+        <div class="modal">
+            <div class="modal__header">
+                <h3 class="modal__title" id="citationModalTitle">Source Detail</h3>
+                <button class="modal__close" id="citationModalClose">&times;</button>
+            </div>
+            <div class="modal__body" id="citationModalBody"></div>
+        </div>
+    </div>
+
+    <!-- ── Analytics Modal ──────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="analyticsModal" style="display:none">
+        <div class="modal modal--wide">
+            <div class="modal__header">
+                <h3 class="modal__title">📊 Pipeline Analytics</h3>
+                <button class="modal__close" id="analyticsModalClose">&times;</button>
+            </div>
+            <div class="modal__body" id="analyticsModalBody">
+                <p>Loading analytics…</p>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/app.js"></script>
