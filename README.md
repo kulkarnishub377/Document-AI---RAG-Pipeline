@@ -3,9 +3,24 @@
 > Upload any document (PDF, image, Word, text, or web URL) and ask questions in plain English.  
 > Fully local, private, and powered by Mistral via Ollama.
 
-![License](https://img.shields.io/badge/License-MIT-blue)
-![Python](https://img.shields.io/badge/Python-3.10+-green)
-![Docker](https://img.shields.io/badge/Docker-Ready-blue)
+<!-- Status Badges -->
+![Version](https://img.shields.io/badge/Version-2.0.0-blueviolet?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-30+-brightgreen?style=flat-square)
+
+<!-- Technology Badges -->
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-LCEL-1C3C3C?style=flat-square&logo=langchain&logoColor=white)
+![Ollama](https://img.shields.io/badge/LLM-Mistral_via_Ollama-black?style=flat-square)
+![FAISS](https://img.shields.io/badge/Vector_Store-FAISS-3B5998?style=flat-square&logo=meta&logoColor=white)
+![PaddleOCR](https://img.shields.io/badge/OCR-PaddleOCR-2B6CB0?style=flat-square)
+![BM25](https://img.shields.io/badge/Search-Hybrid_(FAISS+BM25)-orange?style=flat-square)
+![SentenceTransformers](https://img.shields.io/badge/Embeddings-MiniLM--L6--v2-yellow?style=flat-square)
+![CrossEncoder](https://img.shields.io/badge/Reranker-Cross--Encoder-red?style=flat-square)
+![Frontend](https://img.shields.io/badge/Frontend-Vanilla_JS-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![Code Style](https://img.shields.io/badge/Code_Style-Black-000000?style=flat-square)
 
 ---
 
