@@ -40,8 +40,7 @@ class Chunk:
 
 
 def _sha256(text: str) -> str:
-    digest_val = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    return f"{digest_val}"[:16]
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
 def _split_into_sentences(text: str) -> List[str]:
