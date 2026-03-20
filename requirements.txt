@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────
+# Document AI + RAG Pipeline  –  8 GB spec
+# ─────────────────────────────────────────
+
+# OCR + Layout
+paddlepaddle==2.6.1
+paddleocr==2.7.3
+
+# PDF / DOCX parsing
+pdfplumber==0.11.0
+PyMuPDF==1.24.5
+python-docx==1.1.2
+camelot-py[cv]==0.11.0       # table extraction from native PDFs
+
+# Chunking & text utilities
+langchain==0.2.12
+langchain-community==0.2.11
+langchain-ollama==0.1.1
+tiktoken==0.7.0               # token counter for chunk sizing
+
+# Embedding model
+sentence-transformers==3.0.1
+faiss-cpu==1.8.0              # CPU-only FAISS  (no GPU needed)
+
+# Reranker
+# (CrossEncoder is already inside sentence-transformers)
+
+# Vector store helpers
+numpy==1.26.4
+scipy==1.13.1
+
+# API layer
+fastapi==0.111.1
+uvicorn[standard]==0.30.3
+python-multipart==0.0.9       # file uploads
+
+# Utilities
+tqdm==4.66.4
+python-dotenv==1.0.1
+loguru==0.7.2
+pydantic==2.8.2
