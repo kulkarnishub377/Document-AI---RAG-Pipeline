@@ -7,10 +7,29 @@ name = "doc-rag-pipeline"
 version = "2.0.0"
 description = "Intelligent Document Q&A pipeline using local models, FAISS, and Mistral."
 readme = "README.md"
+license = {text = "MIT"}
 authors = [
-    { name = "Document AI" }
+    { name = "Shubham Kulkarni" }
 ]
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Indexing",
+    "Framework :: FastAPI",
+    "Operating System :: OS Independent",
+]
+keywords = [
+    "rag", "document-ai", "faiss", "ollama", "langchain",
+    "ocr", "semantic-search", "vector-store", "question-answering",
+]
 dependencies = [
     # OCR + Layout
     "paddlepaddle>=3.0.0",
@@ -59,14 +78,25 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0",
     "httpx>=0.27.0",
     "black",
-    "flake8",
     "ruff",
+    "pre-commit",
 ]
 gpu = [
     "faiss-gpu>=1.9.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline"
+Documentation = "https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline/tree/main/docs"
+Issues = "https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline/issues"
+Source = "https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline"
+Changelog = "https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline/blob/main/CHANGELOG.md"
+
+[project.scripts]
+doc-rag = "run:main"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -76,3 +106,19 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", "venv/*", "data/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true

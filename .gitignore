@@ -1,7 +1,11 @@
-# Environments
+# ─────────────────────────────────────────────────────────────────────────────
+# .gitignore — Document AI + RAG Pipeline
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Environment ──────────────────────────────────────────────────────────────
 .env
 
-# Python
+# ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -25,36 +29,46 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environments
+# ── Virtual Environments ────────────────────────────────────────────────────
 venv/
 env/
 .venv/
 .env_dir/
 
-# Pytest / Coverage
+# ── Testing / Coverage ──────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
 coverage.xml
+*.cover
+.hypothesis/
 
-# IDEs / Editors
+# ── Linting / Formatting ────────────────────────────────────────────────────
+.ruff_cache/
+.mypy_cache/
+
+# ── IDEs / Editors ──────────────────────────────────────────────────────────
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 .DS_Store
+Thumbs.db
 
-# Document AI Pipeline specific
-data/uploads/
-data/index/
+# ── Document AI Pipeline — Data ─────────────────────────────────────────────
+data/uploads/*
+!data/uploads/.gitkeep
+data/index/*
+!data/index/.gitkeep
 data/*.log
 
-*.docx
-*.png
-*.jpg
-*.jpeg
-
-# Model Caches
+# ── Document AI Pipeline — Model Caches ─────────────────────────────────────
 .cache/
-~/.cache/huggingface/
-~/.paddleocr/
+huggingface/
+.paddleocr/
+
+# ── Gemini / AI Tools ───────────────────────────────────────────────────────
+.gemini/
+.agent/
+.agents/
