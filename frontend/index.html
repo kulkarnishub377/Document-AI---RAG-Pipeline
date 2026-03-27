@@ -4,276 +4,252 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Document AI + RAG Pipeline — Upload documents and ask questions using local AI. Private, fast, and powerful.">
-  <title>Document AI + RAG Pipeline v3.0</title>
+  <title>Document AI + RAG Pipeline</title>
   <link rel="stylesheet" href="/frontend/css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
 </head>
 <body>
 
 <!-- Background Effects -->
-<div class="bg-grid"></div>
-<div class="bg-glow bg-glow-1"></div>
-<div class="bg-glow bg-glow-2"></div>
-<div class="bg-glow bg-glow-3"></div>
+<div class="app-bg-grid"></div>
+<div class="app-bg-glow app-bg-glow--1"></div>
+<div class="app-bg-glow app-bg-glow--2"></div>
+<div class="app-bg-glow app-bg-glow--3"></div>
 
 <!-- App Layout -->
 <div class="app-layout">
 
-  <!-- ═══ HEADER ═══ -->
-  <header class="header">
-    <div class="header-brand">
-      <div class="header-brand-logo">📄</div>
-      <div class="header-brand-text">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-header__brand">
+      <div class="app-header__logo">📄</div>
+      <div class="app-header__title">
         <h1>Document AI</h1>
-        <span>RAG Pipeline v3.0</span>
+        <span>RAG Pipeline</span>
       </div>
     </div>
-    <div class="header-actions">
-      <select class="theme-select" onchange="changeTheme(this.value)">
-        <option value="dark">🌙 Dark (Default)</option>
+    <div class="app-header__actions">
+      <select class="app-theme-select" id="themeSelect">
+        <option value="dark">🌙 Dark</option>
         <option value="light">☀️ Light</option>
-        <option value="neon">⚡ Cyber Neon</option>
       </select>
-      <div class="header-status" id="ollamaStatus">
-        <span class="status-dot offline" id="statusDot"></span>
+      <div class="app-status-badge" id="statusBadge">
+        <span class="app-status-dot app-status-dot--offline" id="statusDot"></span>
         <span id="statusText">Checking...</span>
       </div>
-      <button class="btn-icon" data-tooltip="Settings" onclick="openModal('settingsModal')">⚙️</button>
+      <button class="app-icon-btn" id="settingsBtn" title="Settings">⚙️</button>
     </div>
   </header>
 
-  <!-- ═══ SIDEBAR ═══ -->
-  <aside class="sidebar">
-    <nav class="sidebar-nav">
-      <div class="nav-item active" data-panel="chat" onclick="switchPanel('chat')">
-        <span class="icon">💬</span> Chat
+  <!-- Sidebar -->
+  <aside class="app-sidebar">
+    <nav class="app-sidebar__nav">
+      <div class="app-nav-item app-nav-item--active" data-panel="chat">
+        <span class="app-nav-icon">💬</span> Chat
       </div>
-      <div class="nav-item" data-panel="upload" onclick="switchPanel('upload')">
-        <span class="icon">📤</span> Upload
+      <div class="app-nav-item" data-panel="upload">
+        <span class="app-nav-icon">📤</span> Upload
       </div>
-      <div class="nav-divider"></div>
-      <div class="nav-section-title">Features</div>
-      <div class="nav-item" data-panel="compare" onclick="switchPanel('compare')">
-        <span class="icon">🔍</span> Compare
+      <div class="app-nav-divider"></div>
+      <div class="app-nav-label">Features</div>
+      <div class="app-nav-item" data-panel="compare">
+        <span class="app-nav-icon">🔍</span> Compare
       </div>
-      <div class="nav-item" data-panel="extract" onclick="switchPanel('extract')">
-        <span class="icon">📋</span> Extract
+      <div class="app-nav-item" data-panel="extract">
+        <span class="app-nav-icon">📋</span> Extract
       </div>
-      <div class="nav-item" data-panel="summarize" onclick="switchPanel('summarize')">
-        <span class="icon">📝</span> Summarize
+      <div class="app-nav-item" data-panel="summarize">
+        <span class="app-nav-icon">📝</span> Summarize
       </div>
-      <div class="nav-divider"></div>
-      <div class="nav-section-title">Insights</div>
-      <div class="nav-item" data-panel="analytics" onclick="switchPanel('analytics')">
-        <span class="icon">📊</span> Analytics
+      <div class="app-nav-divider"></div>
+      <div class="app-nav-label">Insights</div>
+      <div class="app-nav-item" data-panel="analytics">
+        <span class="app-nav-icon">📊</span> Analytics
       </div>
-      <div class="nav-item" data-panel="ragas" onclick="switchPanel('ragas')">
-        <span class="icon">🎯</span> RAGAS Eval
-      </div>
+      <div class="app-nav-item" data-panel="ragas">
+        <span class="app-nav-icon">🎯</span> RAGAS Eval</div>
     </nav>
 
-    <div class="nav-divider"></div>
+    <div class="app-nav-divider"></div>
 
     <!-- Document List -->
-    <div class="sidebar-files" id="sidebarFiles">
-      <div class="sidebar-files-header">
+    <div class="app-document-list" id="documentList">
+      <div class="app-document-list__header">
         <h3>Documents</h3>
-        <span class="sidebar-files-count" id="fileCount">0</span>
+        <span class="app-document-count" id="fileCount">0</span>
       </div>
-      <div id="fileList"></div>
+      <div class="app-document-list__items" id="fileList"></div>
     </div>
   </aside>
 
-  <!-- ═══ MAIN CONTENT ═══ -->
-  <main class="main-content">
+  <!-- Main Content -->
+  <main class="app-main">
 
     <!-- Chat Panel -->
-    <div class="chat-panel panel active" id="panel-chat">
-      <div class="chat-messages" id="chatMessages">
-        <div class="chat-welcome" id="chatWelcome">
-          <div class="chat-welcome-icon">🧠</div>
+    <div class="app-panel app-panel--active" id="panel-chat">
+      <div class="app-chat-messages" id="chatMessages">
+        <div class="app-chat-welcome" id="chatWelcome">
+          <div class="app-chat-welcome__icon">🧠</div>
           <h2>Ask Anything About Your Documents</h2>
           <p>Upload PDFs, Excel files, PowerPoint, images, or paste a URL.<br>Then ask questions in plain English — all answers are grounded in your data.</p>
-          <div class="quick-actions">
-            <div class="quick-action" onclick="quickAsk('What is this document about?')">
-              <span class="icon">🔎</span> Overview
+          <div class="app-quick-actions">
+            <div class="app-quick-action" data-action="overview">
+              <span class="app-quick-action__icon">🔎</span> Overview
             </div>
-            <div class="quick-action" onclick="quickAsk('Summarize the key points')">
-              <span class="icon">📝</span> Summarize
+            <div class="app-quick-action" data-action="summarize">
+              <span class="app-quick-action__icon">📝</span> Summarize
             </div>
-            <div class="quick-action" onclick="switchPanel('upload')">
-              <span class="icon">📤</span> Upload
+            <div class="app-quick-action" data-action="upload">
+              <span class="app-quick-action__icon">📤</span> Upload
             </div>
           </div>
         </div>
       </div>
-      <div class="chat-input-area">
-        <div class="chat-input-wrapper">
-          <textarea id="chatInput" placeholder="Ask a question about your documents..." rows="1"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendQuery()}"></textarea>
-          <div class="chat-input-actions">
-            <button class="btn-send" id="sendBtn" onclick="sendQuery()" data-tooltip="Send">➤</button>
+      <div class="app-chat-input-area">
+        <div class="app-chat-input-wrapper">
+          <textarea class="app-chat-input" id="chatInput" placeholder="Ask a question about your documents..." rows="1"></textarea>
+          <div class="app-chat-input-actions">
+            <button class="app-btn app-btn--send" id="sendBtn" title="Send">➤</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Upload Panel -->
-    <div class="panel" id="panel-upload" style="display:none; flex:1; overflow-y:auto;">
-      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
-           ondragover="event.preventDefault();this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="handleDrop(event)">
-        <div class="icon">📁</div>
+    <div class="app-panel" id="panel-upload">
+      <div class="app-upload-area" id="uploadZone">
+        <div class="app-upload-area__icon">📁</div>
         <h3>Drop documents here or click to browse</h3>
         <p>Maximum file size: 50 MB</p>
-        <div class="supported">
-          <span class="format-tag">PDF</span>
-          <span class="format-tag">DOCX</span>
-          <span class="format-tag">XLSX</span>
-          <span class="format-tag">CSV</span>
-          <span class="format-tag">PPTX</span>
-          <span class="format-tag">PNG</span>
-          <span class="format-tag">JPG</span>
-          <span class="format-tag">TXT</span>
-          <span class="format-tag">MD</span>
+        <div class="app-upload-formats">
+          <span class="app-format-tag">PDF</span>
+          <span class="app-format-tag">DOCX</span>
+          <span class="app-format-tag">XLSX</span>
+          <span class="app-format-tag">CSV</span>
+          <span class="app-format-tag">PPTX</span>
+          <span class="app-format-tag">PNG</span>
+          <span class="app-format-tag">JPG</span>
+          <span class="app-format-tag">TXT</span>
+          <span class="app-format-tag">MD</span>
         </div>
-        <div class="upload-progress" id="uploadProgress" style="display:none">
-          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
-          <div class="progress-text" id="progressText">Uploading...</div>
+        <div class="app-upload-progress" id="uploadProgress">
+          <div class="app-progress-bar">
+            <div class="app-progress-fill" id="progressFill"></div>
+          </div>
+          <div class="app-progress-text" id="progressText">Uploading...</div>
         </div>
       </div>
-      <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.tiff,.txt,.md" multiple style="display:none" onchange="handleFileSelect(event)">
-      <!-- URL Ingest -->
-      <div style="padding:0 32px 24px;max-width:600px;margin:0 auto;">
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="urlInput" placeholder="Or paste a web URL to ingest..." style="flex:1;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-sans);font-size:13px;outline:none;">
-          <button class="btn btn-primary" onclick="ingestUrl()">Ingest URL</button>
+      <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.tiff,.txt,.md" multiple hidden>
+      <div class="app-url-ingest">
+        <div class="app-url-ingest__input">
+          <input type="text" id="urlInput" class="app-input" placeholder="Or paste a web URL to ingest...">
+          <button class="app-btn app-btn--primary" id="ingestBtn">Ingest URL</button>
         </div>
       </div>
     </div>
 
     <!-- Compare Panel -->
-    <div class="panel compare-panel" id="panel-compare" style="display:none">
-      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📑 Document Comparison</h2>
-      <div class="compare-selector">
-        <select class="compare-doc-select" id="compareDocA"><option value="">Select Document A</option></select>
-        <span class="compare-vs">VS</span>
-        <select class="compare-doc-select" id="compareDocB"><option value="">Select Document B</option></select>
+    <div class="app-panel" id="panel-compare">
+      <h2 class="app-panel-title">📑 Document Comparison</h2>
+      <div class="app-compare-selector">
+        <select class="app-input" id="compareDocA"><option value="">Select Document A</option></select>
+        <span class="app-compare-vs">VS</span>
+        <select class="app-input" id="compareDocB"><option value="">Select Document B</option></select>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:24px;">
-        <input type="text" id="compareQuestion" placeholder="Specific comparison question (optional)..." style="flex:1;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-sans);font-size:13px;outline:none;">
-        <button class="btn btn-primary" onclick="compareDocuments()">Compare</button>
+      <div class="app-compare-query">
+        <input type="text" id="compareQuestion" class="app-input" placeholder="Specific comparison question (optional)...">
+        <button class="app-btn app-btn--primary" id="compareBtn">Compare</button>
       </div>
-      <div class="compare-result" id="compareResult" style="display:none"></div>
+      <div class="app-compare-result" id="compareResult"></div>
     </div>
 
     <!-- Extract Panel -->
-    <div class="panel" id="panel-extract" style="display:none;flex:1;overflow-y:auto;padding:24px 32px;">
-      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📋 Field Extraction</h2>
-      <div style="max-width:600px;">
-        <textarea id="extractFields" placeholder="Enter field names, one per line:&#10;invoice_number&#10;vendor_name&#10;total_amount&#10;due_date" rows="6" style="width:100%;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;resize:vertical;outline:none;margin-bottom:12px;"></textarea>
-        <button class="btn btn-primary" onclick="extractFields()" style="width:100%;">Extract Fields</button>
+    <div class="app-panel" id="panel-extract">
+      <h2 class="app-panel-title">📋 Field Extraction</h2>
+      <div class="app-extract-form">
+        <textarea id="extractFields" class="app-textarea" placeholder="Enter field names, one per line:&#10;invoice_number&#10;vendor_name&#10;total_amount&#10;due_date" rows="6"></textarea>
+        <button class="app-btn app-btn--primary" id="extractBtn">Extract Fields</button>
       </div>
-      <div id="extractResult" style="margin-top:24px;"></div>
+      <div id="extractResult"></div>
     </div>
 
     <!-- Summarize Panel -->
-    <div class="panel" id="panel-summarize" style="display:none;flex:1;overflow-y:auto;padding:24px 32px;">
-      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📝 Smart Summary</h2>
-      <div style="max-width:600px;display:flex;gap:8px;margin-bottom:24px;">
-        <input type="text" id="summaryTopic" placeholder="Topic to summarize (or leave empty for general)..." style="flex:1;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-sans);font-size:13px;outline:none;">
-        <button class="btn btn-primary" onclick="getSummary()">Summarize</button>
+    <div class="app-panel" id="panel-summarize">
+      <h2 class="app-panel-title">📝 Smart Summary</h2>
+      <div class="app-summarize-form">
+        <div class="app-form-row">
+          <input type="text" id="summaryTopic" class="app-input" placeholder="Topic to summarize (or leave empty for general)...">
+          <button class="app-btn app-btn--primary" id="summarizeBtn">Summarize</button>
+        </div>
       </div>
-      <div id="summaryResult" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;display:none;line-height:1.8;"></div>
+      <div class="app-summary-result" id="summaryResult"></div>
     </div>
 
     <!-- Analytics Panel -->
-    <div class="panel analytics-panel" id="panel-analytics" style="display:none">
-      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📊 Pipeline Analytics</h2>
-      <div class="stats-grid" id="analyticsStats"></div>
-      <h3 style="margin:16px 0 12px;font-size:14px;font-weight:600;color:var(--text-secondary);">Documents by Source</h3>
-      <div id="sourceBreakdown" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;"></div>
+    <div class="app-panel" id="panel-analytics">
+      <h2 class="app-panel-title">📊 Pipeline Analytics</h2>
+      <div class="app-stats-grid" id="analyticsStats"></div>
+      <h3 class="app-panel-subtitle">Documents by Source</h3>
+      <div class="app-breakdown" id="sourceBreakdown"></div>
     </div>
 
     <!-- RAGAS Panel -->
-    <div class="panel analytics-panel" id="panel-ragas" style="display:none">
-      <h2 style="margin-bottom:6px;font-size:20px;font-weight:700;">🎯 RAGAS Evaluation Dashboard</h2>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:24px;">Measure RAG quality: Faithfulness · Relevancy · Precision · Recall</p>
-      <div class="ragas-grid" id="ragasMetrics">
-        <div class="ragas-metric">
-          <div class="ragas-metric-label">Faithfulness</div>
-          <div class="ragas-score-ring" id="ringFaith"></div>
-          <div class="ragas-trend" id="trendFaith">—</div>
-        </div>
-        <div class="ragas-metric">
-          <div class="ragas-metric-label">Relevancy</div>
-          <div class="ragas-score-ring" id="ringRelevancy"></div>
-          <div class="ragas-trend" id="trendRelevancy">—</div>
-        </div>
-        <div class="ragas-metric">
-          <div class="ragas-metric-label">Precision</div>
-          <div class="ragas-score-ring" id="ringPrecision"></div>
-          <div class="ragas-trend" id="trendPrecision">—</div>
-        </div>
-        <div class="ragas-metric">
-          <div class="ragas-metric-label">Recall</div>
-          <div class="ragas-score-ring" id="ringRecall"></div>
-          <div class="ragas-trend" id="trendRecall">—</div>
-        </div>
+    <div class="app-panel" id="panel-ragas">
+      <h2 class="app-panel-title">🎯 RAGAS Evaluation Dashboard</h2>
+      <p class="app-panel-subtitle app-panel-subtitle--muted">Measure RAG quality: Faithfulness · Relevancy · Precision · Recall</p>
+      <div class="app-ragas-grid" id="ragasMetrics"></div>
+      <div class="app-ragas-controls">
+        <button class="app-btn app-btn--primary" id="refreshRagasBtn">Refresh</button>
+        <button class="app-btn app-btn--secondary" id="clearRagasBtn">Clear History</button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:24px;">
-        <button class="btn btn-primary" onclick="loadRagasDashboard()">Refresh</button>
-        <button class="btn btn-secondary" onclick="clearRagasHistory()">Clear History</button>
-      </div>
-      <div class="stats-grid" id="ragasStats"></div>
-      <h3 style="margin:16px 0 12px;font-size:14px;font-weight:600;color:var(--text-secondary);">Recent Evaluations</h3>
-      <div id="ragasHistory" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;max-height:300px;overflow-y:auto;"></div>
+      <div class="app-stats-grid" id="ragasStats"></div>
+      <h3 class="app-panel-subtitle">Recent Evaluations</h3>
+      <div class="app-ragas-history" id="ragasHistory"></div>
     </div>
 
   </main>
 </div>
 
 <!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal" style="max-width:500px;">
-    <div class="modal-header">
+<div class="app-modal-overlay" id="settingsModal">
+  <div class="app-modal">
+    <div class="app-modal-header">
       <h2>⚙️ Settings</h2>
-      <button class="btn-icon" onclick="closeModal('settingsModal')">✕</button>
+      <button class="app-icon-btn app-icon-btn--close" title="Close">✕</button>
     </div>
-    <div class="modal-body">
-      <div style="margin-bottom:20px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Model</label>
-        <input type="text" value="mistral" readonly style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;margin-top:6px;">
+    <div class="app-modal-body">
+      <div class="app-form-group">
+        <label class="app-form-label">Model</label>
+        <input type="text" value="mistral" readonly class="app-input">
       </div>
-      <div style="margin-bottom:20px;">
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Streaming</label>
-        <div style="display:flex;gap:8px;margin-top:6px;">
-          <button class="btn btn-primary" id="streamOn" onclick="setStreaming(true)" style="flex:1;">On</button>
-          <button class="btn btn-secondary" id="streamOff" onclick="setStreaming(false)" style="flex:1;">Off</button>
+      <div class="app-form-group">
+        <label class="app-form-label">Streaming</label>
+        <div class="app-btn-group">
+          <button class="app-btn app-btn--primary" id="streamOn">On</button>
+          <button class="app-btn app-btn--secondary" id="streamOff">Off</button>
         </div>
       </div>
-      <div>
-        <button class="btn btn-secondary" onclick="clearCache()" style="width:100%;margin-bottom:8px;">🗑️ Clear Query Cache</button>
-        <button class="btn btn-secondary" onclick="clearIndex()" style="width:100%;color:var(--danger);">⚠️ Clear Entire Index</button>
+      <div class="app-form-actions">
+        <button class="app-btn app-btn--secondary" id="cacheBtn">🗑️ Clear Query Cache</button>
+        <button class="app-btn app-btn--danger" id="clearIndexBtn">⚠️ Clear Entire Index</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Source Detail Modal -->
-<div class="modal-overlay" id="sourceModal">
-  <div class="modal">
-    <div class="modal-header">
+<!-- Source Modal -->
+<div class="app-modal-overlay" id="sourceModal">
+  <div class="app-modal">
+    <div class="app-modal-header">
       <h2 id="sourceModalTitle">Source</h2>
-      <button class="btn-icon" onclick="closeModal('sourceModal')">✕</button>
+      <button class="app-icon-btn app-icon-btn--close" title="Close">✕</button>
     </div>
-    <div class="modal-body" id="sourceModalBody" style="font-family:var(--font-mono);font-size:13px;line-height:1.8;white-space:pre-wrap;"></div>
+    <div class="app-modal-body app-modal-body--mono" id="sourceModalBody"></div>
   </div>
 </div>
 
 <!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
+<div class="app-toast-container" id="toastContainer"></div>
 
 <script src="/frontend/js/app.js"></script>
 </body>
