@@ -6,12 +6,15 @@
 
 const STATE = {
     theme: localStorage.getItem('theme') || 'dark',
-    isStreaming: true,
+    isStreaming: localStorage.getItem('isStreaming') !== 'false',
     currentSessionId: null,
     isQuerying: false,
     documents: [],
     activeFilter: null
 };
+
+const MAX_UPLOAD_MB = 50;
+const SUPPORTED_UPLOAD_EXTS = new Set(['.pdf', '.docx', '.xlsx', '.csv', '.pptx', '.png', '.jpg', '.jpeg', '.txt', '.md']);
 
 // -------------------------------------------------------------
 // UI / DOM Helpers
@@ -38,6 +41,7 @@ const DOM = {
     resetFilterBtn: getEl('resetFilterBtn'),
     exportChatBtn: getEl('exportChatBtn'),
     clearChatBtn: getEl('clearChatBtn'),
+    shortcutsBtn: getEl('shortcutsBtn'),
 
     // Documents
     dropZone: getEl('dropZone'),
@@ -55,15 +59,18 @@ const DOM = {
     compareSelectB: getEl('compareSelectB'),
     compareInput: getEl('compareQuestionInput'),
     runCompareBtn: getEl('runCompareBtn'),
+    swapCompareBtn: getEl('swapCompareBtn'),
     compareResult: getEl('compareResultContent'),
 
     // Extract & Summarize
     extractFields: getEl('extractFieldsInput'),
     extractContext: getEl('extractContextInput'),
     runExtractBtn: getEl('runExtractBtn'),
+    copyExtractBtn: getEl('copyExtractBtn'),
     extractResult: getEl('extractResultContent'),
     summaryTopic: getEl('summaryTopicInput'),
     runSummaryBtn: getEl('runSummaryBtn'),
+    copySummaryBtn: getEl('copySummaryBtn'),
     summaryResult: getEl('summaryResultContent'),
 
     // Dashboards
@@ -76,7 +83,8 @@ const DOM = {
     newSessionBtn: getEl('newSessionBtn'),
 
     // Modals
-    settingsModal: getEl('settingsModal')
+    settingsModal: getEl('settingsModal'),
+    shortcutsModal: getEl('shortcutsModal')
 };
 
 function showToast(msg, type = 'info') {
@@ -242,6 +250,7 @@ DOM.newSessionBtn.addEventListener('click', createNewSession);
 // -------------------------------------------------------------
 DOM.streamToggle.addEventListener('click', () => {
     STATE.isStreaming = !STATE.isStreaming;
+    localStorage.setItem('isStreaming', String(STATE.isStreaming));
     DOM.streamToggle.classList.toggle('active', STATE.isStreaming);
     DOM.streamToggle.querySelector('span').textContent = STATE.isStreaming ? 'ON' : 'OFF';
 });
@@ -670,8 +679,27 @@ async function handleFiles(files) {
     const barEl = getEl('uploadBar');
     const nameEl = getEl('uploadFilename');
     
-    // Convert to array
-    const fileArray = Array.from(files);
+    // Convert to array and pre-validate client side for better UX
+    const allFiles = Array.from(files);
+    const fileArray = allFiles.filter((file) => {
+        const ext = `.${(file.name.split('.').pop() || '').toLowerCase()}`;
+        const sizeMb = file.size / (1024 * 1024);
+        if (!SUPPORTED_UPLOAD_EXTS.has(ext)) {
+            showToast(`Skipped unsupported file: ${file.name}`, 'error');
+            return false;
+        }
+        if (sizeMb > MAX_UPLOAD_MB) {
+            showToast(`Skipped large file (> ${MAX_UPLOAD_MB} MB): ${file.name}`, 'error');
+            return false;
+        }
+        return true;
+    });
+
+    if (!fileArray.length) {
+        DOM.uploadProgressBox.style.display = 'none';
+        return;
+    }
+
     let successCount = 0;
 
     for (let i = 0; i < fileArray.length; i++) {
@@ -756,6 +784,15 @@ DOM.runCompareBtn.addEventListener('click', async () => {
     }
 });
 
+if (DOM.swapCompareBtn) {
+    DOM.swapCompareBtn.addEventListener('click', () => {
+        const a = DOM.compareSelectA.value;
+        const b = DOM.compareSelectB.value;
+        DOM.compareSelectA.value = b;
+        DOM.compareSelectB.value = a;
+    });
+}
+
 DOM.runExtractBtn.addEventListener('click', async () => {
     const fields = DOM.extractFields.value.split('\n').map(l=>l.trim()).filter(Boolean);
     if(fields.length === 0) { showToast("Specify extraction keys", "error"); return; }
@@ -786,6 +823,28 @@ DOM.runSummaryBtn.addEventListener('click', async () => {
         DOM.summaryResult.innerHTML = escapeHtml(e.message);
     }
 });
+
+if (DOM.copyExtractBtn) {
+    DOM.copyExtractBtn.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(DOM.extractResult.textContent || '');
+            showToast('Extraction result copied', 'success');
+        } catch (e) {
+            showToast('Copy failed', 'error');
+        }
+    });
+}
+
+if (DOM.copySummaryBtn) {
+    DOM.copySummaryBtn.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(DOM.summaryResult.textContent || '');
+            showToast('Summary copied', 'success');
+        } catch (e) {
+            showToast('Copy failed', 'error');
+        }
+    });
+}
 
 // -------------------------------------------------------------
 // Analytics & RAGAS
@@ -862,6 +921,11 @@ getEl('purgeRagasBtn').addEventListener('click', async () => {
 getEl('settingsBtn').addEventListener('click', () => {
     DOM.settingsModal.classList.add('active');
 });
+if (DOM.shortcutsBtn) {
+    DOM.shortcutsBtn.addEventListener('click', () => {
+        DOM.shortcutsModal.classList.add('active');
+    });
+}
 getEl('clearCacheBtn').addEventListener('click', async () => {
     try {
         const res = await apiCall('/cache/clear', { method: 'POST' });
@@ -897,9 +961,42 @@ window.openPreview = (filename) => {
     getEl('previewModal').classList.add('active');
 };
 
+document.addEventListener('keydown', (e) => {
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
+    const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+    if (cmdOrCtrl && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        DOM.queryInput.focus();
+        return;
+    }
+
+    if (cmdOrCtrl && e.key === 'Enter') {
+        if (!STATE.isQuerying) {
+            e.preventDefault();
+            triggerQuery();
+        }
+        return;
+    }
+
+    if (e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        DOM.streamToggle.click();
+        return;
+    }
+
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach((modal) => {
+            modal.classList.remove('active');
+        });
+    }
+});
+
 
 // Initialization hooks
 applyTheme(STATE.theme);
+DOM.streamToggle.classList.toggle('active', STATE.isStreaming);
+DOM.streamToggle.querySelector('span').textContent = STATE.isStreaming ? 'ON' : 'OFF';
 refreshStatus();
 loadSessions();
 loadDocuments();
