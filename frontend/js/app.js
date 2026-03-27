@@ -550,13 +550,46 @@ function renderDocumentRows() {
 
     docs.forEach(doc => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><a href="#" style="color:var(--accent-primary);text-decoration:none;font-weight:600;" onclick="openPreview('${escapeHtml(doc.filename)}')">${escapeHtml(doc.filename)}</a></td>
-            <td><span class="pill-btn">${escapeHtml(doc.suffix.toUpperCase().replace('.',''))}</span></td>
-            <td>${doc.size_mb} MB</td>
-            <td>${new Date(doc.modified || Date.now()).toLocaleDateString()}</td>
-            <td><button class="btn-danger-outline" onclick="deleteDoc('${escapeHtml(doc.filename)}')">Delete</button></td>
-        `;
+
+        const nameTd = document.createElement('td');
+        const nameLink = document.createElement('a');
+        nameLink.href = '#';
+        nameLink.style.color = 'var(--accent-primary)';
+        nameLink.style.textDecoration = 'none';
+        nameLink.style.fontWeight = '600';
+        nameLink.textContent = doc.filename;
+        nameLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            openPreview(doc.filename);
+        });
+        nameTd.appendChild(nameLink);
+
+        const typeTd = document.createElement('td');
+        const typePill = document.createElement('span');
+        typePill.className = 'pill-btn';
+        typePill.textContent = (doc.suffix || '').toUpperCase().replace('.', '');
+        typeTd.appendChild(typePill);
+
+        const sizeTd = document.createElement('td');
+        sizeTd.textContent = `${doc.size_mb} MB`;
+
+        const dateTd = document.createElement('td');
+        dateTd.textContent = new Date(doc.modified || Date.now()).toLocaleDateString();
+
+        const actionTd = document.createElement('td');
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-danger-outline';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => {
+            deleteDoc(doc.filename);
+        });
+        actionTd.appendChild(deleteBtn);
+
+        tr.appendChild(nameTd);
+        tr.appendChild(typeTd);
+        tr.appendChild(sizeTd);
+        tr.appendChild(dateTd);
+        tr.appendChild(actionTd);
         DOM.docTableBody.appendChild(tr);
     });
 }
@@ -564,12 +597,25 @@ function renderDocumentRows() {
 function refreshSourceFilterOptions() {
     if (!DOM.sourceFilterSelect) return;
     const current = STATE.activeFilter || '';
-    const options = ['<option value="">All Documents</option>'];
+    DOM.sourceFilterSelect.innerHTML = '';
+
+    const allOption = document.createElement('option');
+    allOption.value = '';
+    allOption.textContent = 'All Documents';
+    DOM.sourceFilterSelect.appendChild(allOption);
+
     STATE.documents.forEach((d) => {
-        options.push(`<option value="${escapeHtml(d.filename)}">${escapeHtml(d.filename)}</option>`);
+        const option = document.createElement('option');
+        option.value = d.filename;
+        option.textContent = d.filename;
+        DOM.sourceFilterSelect.appendChild(option);
     });
-    DOM.sourceFilterSelect.innerHTML = options.join('');
-    DOM.sourceFilterSelect.value = current;
+
+    const isValidCurrent = current && STATE.documents.some((d) => d.filename === current);
+    DOM.sourceFilterSelect.value = isValidCurrent ? current : '';
+    if (!isValidCurrent) {
+        STATE.activeFilter = null;
+    }
 }
 
 if (DOM.documentSearchInput) {
@@ -671,12 +717,24 @@ DOM.ingestUrlBtn.addEventListener('click', async () => {
 // Intelligence Views (Compare, Extract, Summarize)
 // -------------------------------------------------------------
 function renderCompareDropdowns() {
-    let opts = '<option value="">Select Document...</option>';
-    STATE.documents.forEach(d => {
-        opts += `<option value="${escapeHtml(d.filename)}">${escapeHtml(d.filename)}</option>`;
-    });
-    DOM.compareSelectA.innerHTML = opts;
-    DOM.compareSelectB.innerHTML = opts;
+    const fill = (selectEl) => {
+        if (!selectEl) return;
+        selectEl.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Select Document...';
+        selectEl.appendChild(placeholder);
+
+        STATE.documents.forEach((d) => {
+            const option = document.createElement('option');
+            option.value = d.filename;
+            option.textContent = d.filename;
+            selectEl.appendChild(option);
+        });
+    };
+
+    fill(DOM.compareSelectA);
+    fill(DOM.compareSelectB);
 }
 
 DOM.runCompareBtn.addEventListener('click', async () => {
