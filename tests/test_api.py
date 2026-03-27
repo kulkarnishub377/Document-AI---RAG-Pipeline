@@ -127,7 +127,7 @@ def test_query_requires_question():
 
 def test_query_ollama_offline():
     """Test that query returns 503 when Ollama is not reachable."""
-    with patch("llm.prompt_chains.check_ollama_connection", return_value=False):
+    with patch("api.app.check_ollama_connection", return_value=False):
         resp = client.post("/query", json={"question": "What is this?"})
         assert resp.status_code == 503
         assert "Ollama" in resp.json()["detail"]
@@ -135,7 +135,7 @@ def test_query_ollama_offline():
 
 def test_query_success():
     """Test successful query with mocked pipeline."""
-    with patch("llm.prompt_chains.check_ollama_connection", return_value=True), \
+    with patch("api.app.check_ollama_connection", return_value=True), \
          patch("pipeline.query") as mock_query:
         mock_query.return_value = {
             "answer": "The total is $100.",
@@ -153,7 +153,7 @@ def test_query_success():
 
 def test_summarize_endpoint():
     """Test summarization endpoint."""
-    with patch("llm.prompt_chains.check_ollama_connection", return_value=True), \
+    with patch("api.app.check_ollama_connection", return_value=True), \
          patch("pipeline.get_summary") as mock_summary:
         mock_summary.return_value = {
             "summary": "This document is about testing.",
@@ -167,7 +167,7 @@ def test_summarize_endpoint():
 
 def test_extract_endpoint():
     """Test extraction endpoint."""
-    with patch("llm.prompt_chains.check_ollama_connection", return_value=True), \
+    with patch("api.app.check_ollama_connection", return_value=True), \
          patch("pipeline.extract") as mock_extract:
         mock_extract.return_value = {
             "fields": {"invoice_number": "INV-001", "total": "$100"},
@@ -184,7 +184,7 @@ def test_extract_endpoint():
 
 def test_table_query_endpoint():
     """Test table query endpoint."""
-    with patch("llm.prompt_chains.check_ollama_connection", return_value=True), \
+    with patch("api.app.check_ollama_connection", return_value=True), \
          patch("pipeline.query_table") as mock_table:
         mock_table.return_value = {
             "answer": "Row 3 total is $50.",
@@ -198,7 +198,7 @@ def test_table_query_endpoint():
 
 def test_compare_endpoint_exposes_analysis_alias():
     """Test that compare responses expose both analysis and compatibility aliases."""
-    with patch("llm.prompt_chains.check_ollama_connection", return_value=True), \
+    with patch("api.app.check_ollama_connection", return_value=True), \
          patch("pipeline.compare_documents") as mock_compare:
         mock_compare.return_value = {
             "analysis": "Documents differ in one clause.",

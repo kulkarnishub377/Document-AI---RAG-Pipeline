@@ -1,6 +1,6 @@
 # 📄 DocuAI Studio V3
 
-> Upload any document (PDF, image, DOCX, Excel, PowerPoint, CSV, text, or web URL) and ask questions in plain English.
+> Upload any document (PDF, image, DOCX, XLSX, PowerPoint, CSV, text, or web URL) and ask questions in plain English.
 > Fully local, private, and powered by Mistral via Ollama.
 
 <!-- Status Badges -->
@@ -312,6 +312,7 @@ All settings can be configured via environment variables or a `.env` file:
 | Variable                    | Default              | Description                            |
 | --------------------------- | -------------------- | -------------------------------------- |
 | `OLLAMA_MODEL`            | `mistral`          | LLM model name                         |
+| `OLLAMA_VISION_MODEL`     | `llava`            | Vision model for image extraction      |
 | `EMBED_MODEL_NAME`        | `all-MiniLM-L6-v2` | Embedding model                        |
 | `CHUNK_SIZE`              | `512`              | Chunk size in characters               |
 | `RETRIEVAL_TOP_K`         | `20`               | FAISS candidates to retrieve           |
@@ -330,6 +331,8 @@ All settings can be configured via environment variables or a `.env` file:
 | `LOG_FORMAT`              | `text`             | 🆕 Log format:`text` or `json`     |
 
 See [`.env.example`](.env.example) for the full list.
+
+Advanced model tip: you can improve answer quality by using stronger Ollama models in `.env`, for example `qwen2.5:14b` or `llama3.1:8b` for `OLLAMA_MODEL`, and `llava:13b` (or another vision-capable model you have installed) for `OLLAMA_VISION_MODEL`.
 
 ---
 

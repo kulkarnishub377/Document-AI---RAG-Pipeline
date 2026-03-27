@@ -32,7 +32,7 @@ from loguru import logger
 
 from config import (
     OCR_LANGUAGE, OCR_USE_ANGLE_CLS, ALLOWED_EXTENSIONS,
-    MAX_FILE_SIZE_MB, MULTILINGUAL_MODE,
+    MAX_FILE_SIZE_MB, MULTILINGUAL_MODE, OLLAMA_VISION_MODEL,
 )
 
 
@@ -203,8 +203,8 @@ def _parse_image_vision(path: Path) -> List[PageData]:
         img_b64 = base64.b64encode(f.read()).decode("utf-8")
         
     try:
-        logger.info(f"Attempting Vision LLM (Llava) extraction for {path.name}")
-        llm = ChatOllama(model="llava", temperature=0)
+        logger.info(f"Attempting Vision LLM ({OLLAMA_VISION_MODEL}) extraction for {path.name}")
+        llm = ChatOllama(model=OLLAMA_VISION_MODEL, temperature=0)
         msg = HumanMessage(
             content=[
                 {"type": "text", "text": "Extract all text, data, tables, and describe any charts/graphs in this image in detail. Reply ONLY with the extracted content and description."},
@@ -402,7 +402,8 @@ def parse_url(url: str) -> List[PageData]:
     # Use the domain + title as the source name
     from urllib.parse import urlparse
     domain = urlparse(url).netloc
-    title = soup.title.string.strip() if soup.title else domain
+    title_node = soup.title.string if soup.title else None
+    title = title_node.strip() if title_node else domain
     source_name = f"{domain} - {title}"
     lang = _detect_language(cleaned_text) if MULTILINGUAL_MODE else "en"
 
@@ -467,7 +468,7 @@ def load_document(path: str | Path) -> List[PageData]:
         logger.info("→ Image file, attempting Vision LLM with OCR fallback")
         pages = _parse_image_vision(path)
 
-    elif suffix in {".docx", ".doc"}:
+    elif suffix == ".docx":
         logger.info("→ DOCX file, using python-docx parser")
         pages = _parse_docx(path)
 
@@ -475,7 +476,7 @@ def load_document(path: str | Path) -> List[PageData]:
         logger.info("→ Text file, reading directly")
         pages = _parse_text(path)
 
-    elif suffix in {".xlsx", ".xls"}:
+    elif suffix == ".xlsx":
         logger.info("→ Excel file, using openpyxl parser")
         pages = _parse_excel(path)
 
@@ -490,7 +491,7 @@ def load_document(path: str | Path) -> List[PageData]:
     else:
         raise ValueError(
             f"Unsupported file type: {suffix}  "
-            f"(supported: pdf, png, jpg, jpeg, tiff, bmp, webp, docx, txt, md)"
+            f"(supported: pdf, png, jpg, jpeg, tiff, bmp, webp, docx, txt, md, xlsx, csv, pptx)"
         )
 
     elapsed = time.perf_counter() - t0

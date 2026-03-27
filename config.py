@@ -48,6 +48,7 @@ RERANKER_TOP_K = int(os.getenv("RERANKER_TOP_K", "5"))
 # Ollama LLM  (must run: ollama pull mistral)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "mistral")
+OLLAMA_VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL", "llava")
 
 # ── OCR ───────────────────────────────────────────────────────────────────────
 OCR_LANGUAGE       = os.getenv("OCR_LANGUAGE", "en")
@@ -69,8 +70,8 @@ API_VERSION = os.getenv("API_VERSION", "v1")
 MAX_FILE_SIZE_MB   = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
 ALLOWED_EXTENSIONS = {
     ".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp",
-    ".docx", ".doc", ".txt", ".md",
-    ".xlsx", ".xls", ".csv",      # Spreadsheets (v3.0)
+    ".docx", ".txt", ".md",
+    ".xlsx", ".csv",      # Spreadsheets (v3.0)
     ".pptx",                       # Presentations (v3.0)
 }
 

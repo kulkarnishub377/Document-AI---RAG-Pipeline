@@ -103,6 +103,9 @@ class SessionManager:
         mode: str = "qa",
     ) -> Dict[str, Any]:
         """Add a message to a session."""
+        if not self.get_session(session_id):
+            raise ValueError(f"Session '{session_id}' not found")
+
         now = datetime.utcnow().isoformat()
         sources_json = json.dumps(sources or [])
         conn = self._get_conn()

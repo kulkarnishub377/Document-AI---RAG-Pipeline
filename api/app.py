@@ -63,7 +63,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -338,6 +338,9 @@ async def query_endpoint(req: QueryRequest):
     if not check_ollama_connection():
         raise OllamaNotReachableError("configured URL")
 
+    if req.session_id and not session_manager.get_session(req.session_id):
+        raise HTTPException(status_code=404, detail=f"Session '{req.session_id}' not found")
+
     # Get history from session if provided
     history = req.history
     if req.session_id and not history:
@@ -368,6 +371,9 @@ async def query_stream(req: QueryRequest):
     """
     if not check_ollama_connection():
         raise OllamaNotReachableError("configured URL")
+
+    if req.session_id and not session_manager.get_session(req.session_id):
+        raise HTTPException(status_code=404, detail=f"Session '{req.session_id}' not found")
 
     # Get relevant chunks
     results = pipeline.get_relevant_chunks(req.question, source_filter=req.source_filter)
@@ -481,7 +487,10 @@ async def get_messages(session_id: str, limit: int = 100):
 
 @app.post("/sessions/{session_id}/messages", tags=["Sessions"], summary="Add a message to a session")
 async def add_message(session_id: str, req: SessionMessageRequest):
-    return session_manager.add_message(session_id, req.role, req.content, mode=req.mode)
+    try:
+        return session_manager.add_message(session_id, req.role, req.content, mode=req.mode)
+    except ValueError:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
 
 
 @app.delete("/sessions/{session_id}", tags=["Sessions"], summary="Delete a session")

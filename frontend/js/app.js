@@ -74,7 +74,7 @@ const DOM = {
 function showToast(msg, type = 'info') {
     const t = document.createElement('div');
     t.className = `toast ${type}`;
-    t.innerHTML = msg;
+    t.textContent = String(msg);
     DOM.toastContainer.appendChild(t);
     // Trigger animation
     requestAnimationFrame(() => t.classList.add('show'));
