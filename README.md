@@ -1,4 +1,4 @@
-# 📄 Document AI + RAG Pipeline v3.0
+# 📄 DocuAI Studio V3
 
 > Upload any document (PDF, image, Excel, PowerPoint, Word, CSV, text, or web URL) and ask questions in plain English.
 > Fully local, private, and powered by Mistral via Ollama.
@@ -146,7 +146,7 @@ Open [http://localhost:8000](http://localhost:8000) in your browser.
 ## 📁 Project Structure
 
 ```
-Document AI + RAG Pipeline/
+DocuAI Studio/
 ├── api/
 │   └── app.py                 # FastAPI REST + WebSocket server (30+ endpoints)
 ├── chunking/
