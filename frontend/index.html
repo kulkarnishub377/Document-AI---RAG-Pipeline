@@ -1,328 +1,376 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Document AI Pro - Advanced AI-powered document analysis">
-  <title>Document AI Pro</title>
-  <link rel="stylesheet" href="/frontend/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuAI Studio V3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/frontend/css/style.css">
 </head>
 <body>
 
-<div class="app">
-  <!-- Header -->
-  <header class="header">
-    <div class="header-left">
-      <div class="logo">
-        <span class="logo-icon">📄</span>
-        <div class="logo-text">
-          <div class="logo-title">Document AI</div>
-          <div class="logo-subtitle">RAG Pipeline</div>
-        </div>
-      </div>
+    <!-- Background Animated Shapes (for Glassmorphism effect) -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
     </div>
 
-    <div class="header-center">
-      <div class="stat">
-        <span class="stat-label">Vectors</span>
-        <span class="stat-value" id="vectorCount">0</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat">
-        <span class="stat-label">Docs</span>
-        <span class="stat-value" id="docCount">0</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat">
-        <span class="stat-label">Status</span>
-        <span class="stat-badge" id="statusBadge">
-          <span class="status-dot" id="statusDot"></span>
-          <span id="statusText">Offline</span>
-        </span>
-      </div>
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar glass-panel">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg viewBox="0 0 24 24" fill="none" class="logo-svg" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    <span class="logo-text">DocuAI <span class="logo-highlight">Studio</span></span>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">WORKSPACE</div>
+                <button class="nav-btn active" data-target="view-chat">
+                    <span class="nav-icon">💬</span> Chat API
+                </button>
+                <button class="nav-btn" data-target="view-documents">
+                    <span class="nav-icon">📂</span> Data Lake
+                </button>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">INTELLIGENCE</div>
+                <button class="nav-btn" data-target="view-compare">
+                    <span class="nav-icon">⚖️</span> Compare Docs
+                </button>
+                <button class="nav-btn" data-target="view-extract">
+                    <span class="nav-icon">📋</span> Extract Fields
+                </button>
+                <button class="nav-btn" data-target="view-summarize">
+                    <span class="nav-icon">📝</span> Smart Summary
+                </button>
+                <button class="nav-btn" data-target="view-analytics">
+                    <span class="nav-icon">📊</span> Pipeline Analytics
+                </button>
+                <button class="nav-btn" data-target="view-ragas">
+                    <span class="nav-icon">🎯</span> RAGAS Metrics
+                </button>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="session-manager">
+                    <div class="nav-title">SESSIONS</div>
+                    <div class="session-list" id="sessionList">
+                        <!-- Javascript populated sessions -->
+                        <div class="session-item">Default Session</div>
+                    </div>
+                    <button class="btn-primary-outline w-full" id="newSessionBtn">+ New Session</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN AREA -->
+        <main class="main-content">
+            
+            <!-- TOPBAR -->
+            <header class="topbar glass-panel">
+                <div class="topbar-left">
+                    <h2 class="view-title" id="currentViewTitle">Chat API</h2>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="status-indicator">
+                        <span class="pulse-dot" id="systemPulse"></span>
+                        <span id="systemStatusText">System Online</span>
+                    </div>
+
+                    <div class="metric-pill">
+                        <span class="metric-label">Vectors</span>
+                        <span class="metric-val" id="globalVectorCount">0</span>
+                    </div>
+                    
+                    <button class="icon-btn" id="themeToggleBtn" title="Toggle Light/Dark Theme">
+                        <span class="theme-icon dark-visible">☀️</span>
+                        <span class="theme-icon light-visible">🌙</span>
+                    </button>
+                    
+                    <button class="icon-btn" id="settingsBtn" title="System Settings">⚙️</button>
+                </div>
+            </header>
+
+            <!-- VIEW PANELS -->
+            <div class="view-container">
+
+                <!-- CHAT VIEW -->
+                <section class="view-panel active" id="view-chat">
+                    <div class="chat-container glass-panel">
+                        <div class="chat-messages" id="chatStream">
+                            
+                            <div class="chat-empty-state" id="chatEmptyState">
+                                <div class="empty-icon">🤖</div>
+                                <h3>DocuAI Assistant Ready</h3>
+                                <p>Ask any question about your embedded documentation using plain English. Enabled with persistent context and RAG.</p>
+                                <div class="quick-prompts">
+                                    <button class="pill-btn suggestion-btn">Summarize the latest document</button>
+                                    <button class="pill-btn suggestion-btn">Extract all financial figures</button>
+                                </div>
+                            </div>
+
+                        </div>
+                        
+                        <div class="chat-input-zone">
+                            <div class="input-glass-wrapper">
+                                <button class="upload-shortcut-btn" id="quickUploadBtn" title="Quick Upload">📎</button>
+                                <textarea id="queryInput" placeholder="Message DocuAI... (Shift+Enter for new line)" rows="1"></textarea>
+                                <button class="send-btn" id="sendQueryBtn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                                </button>
+                            </div>
+                            <div class="chat-footer-controls">
+                                <span class="stream-toggle active" id="streamToggle">⚡ Streaming <span>ON</span></span>
+                                <span class="doc-filter" id="activeDocFilter">All Documents</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DATA LAKE (DOCUMENTS & UPLOAD) VIEW -->
+                <section class="view-panel scroll-y" id="view-documents">
+                    <div class="panel-inner">
+                        
+                        <div class="grid-2">
+                            <!-- Drag & Drop Zone -->
+                            <div class="upload-card glass-panel" id="dropZone">
+                                <div class="upload-icon-large">☁️</div>
+                                <h3>Secure Document Upload</h3>
+                                <p>Drag & drop or click to browse files.</p>
+                                <p class="sub-text">Supports PDF, DOCX, XLSX, CSV, PPTX, Images</p>
+                                <input type="file" id="bulkFileInput" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.txt,.md">
+                                <button class="btn-primary mt-4" id="triggerFileBtn">Select Files</button>
+                                
+                                <div class="upload-progress-container" id="uploadProgressBox">
+                                    <div class="progress-info">
+                                        <span id="uploadFilename">Uploading...</span>
+                                        <span id="uploadPercent">0%</span>
+                                    </div>
+                                    <div class="progress-track"><div class="progress-bar" id="uploadBar"></div></div>
+                                </div>
+                            </div>
+
+                            <!-- URL Ingestion -->
+                            <div class="upload-card glass-panel">
+                                <div class="upload-icon-large">🌐</div>
+                                <h3>Web & API Ingestion</h3>
+                                <p>Index real-time web pages instantly.</p>
+                                <div class="input-group mt-4">
+                                    <input type="text" id="urlIngestInput" class="glass-input" placeholder="https://example.com/docs">
+                                    <button class="btn-primary" id="ingestUrlBtn">Ingest</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Document List Table -->
+                        <div class="table-card glass-panel mt-6">
+                            <div class="card-header-flex">
+                                <h3>Active Vector Index</h3>
+                                <button class="btn-danger-outline" id="clearIndexBtn">Clear Index</button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="glass-table">
+                                    <thead>
+                                        <tr>
+                                            <th>File Name</th>
+                                            <th>Type</th>
+                                            <th>Size</th>
+                                            <th>Indexed Date</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="documentTableBody">
+                                        <!-- Documents dynamically injected -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- COMPARE VIEW -->
+                <section class="view-panel scroll-y" id="view-compare">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6 text-center">
+                            <h2>Document Comparator Engine</h2>
+                            <p class="text-muted">Analyze similarities and complex differences between dual documents using the LLM crossover engine.</p>
+                            
+                            <div class="compare-grid mt-6">
+                                <div class="compare-side">
+                                    <label>Source Document A</label>
+                                    <select class="glass-select" id="compareSelectA"><option>Loading...</option></select>
+                                </div>
+                                <div class="compare-badge">VS</div>
+                                <div class="compare-side">
+                                    <label>Target Document B</label>
+                                    <select class="glass-select" id="compareSelectB"><option>Loading...</option></select>
+                                </div>
+                            </div>
+
+                            <div class="input-group mt-6">
+                                <input type="text" class="glass-input" id="compareQuestionInput" placeholder="Specify comparison focus (optional)...">
+                                <button class="btn-primary" id="runCompareBtn">Execute Analysis</button>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel mt-6 pd-6 result-panel" id="compareResultPanel">
+                            <h3>Comparison Matrix Results</h3>
+                            <div class="markdown-body" id="compareResultContent">
+                                <div class="text-muted">Awaiting execution...</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- EXTRACT VIEW -->
+                <section class="view-panel scroll-y" id="view-extract">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6">
+                            <h2>Structured Data Extraction</h2>
+                            <p class="text-muted mb-4">Pull exact keys and JSON structures from unstructured raw texts.</p>
+                            
+                            <label>Fields to Extract (one per line)</label>
+                            <textarea id="extractFieldsInput" class="glass-textarea" rows="4" placeholder="ClientName&#10;InvoiceNumber&#10;TotalAmount"></textarea>
+                            
+                            <label class="mt-4">Extraction Context Filter (optional)</label>
+                            <input type="text" id="extractContextInput" class="glass-input mb-4" placeholder="e.g. Look only at Q3 reports">
+                            
+                            <button class="btn-primary" id="runExtractBtn">Start Extraction</button>
+                        </div>
+
+                        <div class="glass-panel mt-6 pd-6 result-panel" id="extractResultPanel">
+                            <h3>Extracted JSON Payload</h3>
+                            <pre class="json-viewer" id="extractResultContent">// Output</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SUMMARIZE VIEW -->
+                <section class="view-panel scroll-y" id="view-summarize">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6">
+                            <h2>Smart Auto-Summarization</h2>
+                            <p class="text-muted mb-4">Leverage Mistral 7B to condense complex vector chunks into dense summaries.</p>
+                            
+                            <div class="input-group">
+                                <input type="text" id="summaryTopicInput" class="glass-input" placeholder="Focus topic (Leave empty for globally blended summary)">
+                                <button class="btn-primary" id="runSummaryBtn">Generate</button>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel mt-6 pd-6 result-panel" id="summaryResultPanel">
+                            <h3>Summary Profile</h3>
+                            <div class="markdown-body" id="summaryResultContent">
+                                <div class="text-muted">Awaiting execution...</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ANALYTICS VIEW -->
+                <section class="view-panel scroll-y" id="view-analytics">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6 text-center mb-6">
+                            <h2>System Analytics Dashboard</h2>
+                            <button class="btn-secondary mt-2" id="refreshAnalyticsBtn">Refresh Data</button>
+                        </div>
+
+                        <div class="stats-grid" id="analyticsDashboard">
+                            <!-- JS Inject -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- RAGAS Metrics VIEW -->
+                <section class="view-panel scroll-y" id="view-ragas">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6 text-center mb-6 flex justify-between align-center">
+                            <div>
+                                <h2 class="text-left">RAGAS Quality Evaluation</h2>
+                                <p class="text-muted text-left">Real-world AI alignment metrics (Faithfulness, Relevancy).</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="btn-secondary" id="refreshRagasBtn">Refresh</button>
+                                <button class="btn-danger-outline" id="purgeRagasBtn">Purge Logs</button>
+                            </div>
+                        </div>
+
+                        <div class="stats-grid" id="ragasDashboard">
+                            <!-- Stats injected -->
+                        </div>
+
+                        <div class="table-card glass-panel mt-6">
+                            <div class="card-header-flex">
+                                <h3>Recent Evaluation History</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="glass-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Query</th>
+                                            <th>Overall %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ragasHistoryLog">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
     </div>
 
-    <div class="header-right">
-      <select class="theme-select" id="themeSelect">
-        <option value="dark">🌙 Dark</option>
-        <option value="light">☀️ Light</option>
-      </select>
-      <button class="header-btn" id="settingsBtn" title="Settings">⚙️</button>
-      <button class="header-btn" id="helpBtn" title="Help">❓</button>
+    <!-- Modals -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3>Global Instance Settings</h3>
+                <button class="close-modal-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Active Engine Model</label>
+                    <input type="text" class="glass-input" value="Mistral 7B (Ollama)" readonly disabled>
+                </div>
+                <div class="form-group mt-4">
+                    <label>Cache Matrix Control</label>
+                    <div class="flex gap-2 mt-2">
+                        <button class="btn-secondary w-full" id="clearCacheBtn">Purge Query Cache</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </header>
 
-  <!-- Main Content -->
-  <div class="workspace">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-top">
-        <button class="btn-primary btn-full" id="newChatBtn">➕ New Chat</button>
-        <button class="btn-secondary btn-full" id="uploadBtn">📤 Upload</button>
-      </div>
-
-      <nav class="nav-menu">
-        <div class="nav-section">
-          <div class="nav-label">Main</div>
-          <div class="nav-item nav-item--active" data-panel="chat">
-            💬 Chat
-          </div>
-          <div class="nav-item" data-panel="upload">
-            📤 Upload
-          </div>
-        </div>
-
-        <div class="nav-section">
-          <div class="nav-label">Tools</div>
-          <div class="nav-item" data-panel="compare">
-            🔍 Compare
-          </div>
-          <div class="nav-item" data-panel="extract">
-            📋 Extract
-          </div>
-          <div class="nav-item" data-panel="summarize">
-            📝 Summarize
-          </div>
-        </div>
-
-        <div class="nav-section">
-          <div class="nav-label">Analytics</div>
-          <div class="nav-item" data-panel="analytics">
-            📊 Analytics
-          </div>
-          <div class="nav-item" data-panel="ragas">
-            🎯 RAGAS
-          </div>
-        </div>
-      </nav>
-
-      <div class="documents-box">
-        <div class="docs-header">
-          <h3>Documents</h3>
-          <span class="doc-badge" id="fileCount">0</span>
-        </div>
-        <div class="docs-list" id="fileList"></div>
-      </div>
-    </aside>
-
-    <!-- Main Panel -->
-    <main class="main-content">
-      <!-- Chat Panel -->
-      <div class="panel panel--active" id="panel-chat">
-        <div class="chat-messages" id="chatMessages">
-          <div class="welcome-box" id="chatWelcome">
-            <div class="welcome-header">
-              <h1>👋 Welcome to Document AI</h1>
-              <p>Upload documents and ask questions powered by AI</p>
+    <div class="modal-overlay" id="sourceModal">
+        <div class="modal-content glass-panel modal-lg">
+            <div class="modal-header">
+                <h3 id="sourceModalTitle">Source Artifact</h3>
+                <button class="close-modal-btn">×</button>
             </div>
-
-            <div class="welcome-grid">
-              <div class="welcome-card" data-action="overview">
-                <div class="card-icon">🔍</div>
-                <h3>Overview</h3>
-                <p>What is this about?</p>
-              </div>
-              <div class="welcome-card" data-action="summarize">
-                <div class="card-icon">📝</div>
-                <h3>Summarize</h3>
-                <p>Get key points</p>
-              </div>
-              <div class="welcome-card" data-action="upload">
-                <div class="card-icon">📤</div>
-                <h3>Upload</h3>
-                <p>Add documents</p>
-              </div>
-              <div class="welcome-card" data-action="compare">
-                <div class="card-icon">⚖️</div>
-                <h3>Compare</h3>
-                <p>Find differences</p>
-              </div>
+            <div class="modal-body">
+                <div class="glass-textarea readout-box mono-text" id="sourceModalBody"></div>
             </div>
-          </div>
         </div>
-
-        <div class="chat-input-area">
-          <div class="chat-input-wrapper">
-            <textarea class="chat-input" id="chatInput" placeholder="Ask a question..." rows="1"></textarea>
-            <button class="btn-send" id="sendBtn">➤</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Upload Panel -->
-      <div class="panel" id="panel-upload">
-        <div class="panel-header">
-          <h2>Upload Documents</h2>
-          <p>Add files to your knowledge base</p>
-        </div>
-        <div class="panel-body">
-          <div class="upload-zone" id="uploadZone">
-            <div class="upload-icon">📁</div>
-            <h3>Drop files here or click to browse</h3>
-            <p>Max 50 MB per file</p>
-            <div class="format-tags">
-              <span>PDF</span><span>DOCX</span><span>XLSX</span><span>CSV</span><span>PPTX</span><span>Images</span>
-            </div>
-            <div class="upload-progress" id="uploadProgress">
-              <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-              </div>
-              <p id="progressText">Uploading...</p>
-            </div>
-          </div>
-          <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.tiff,.txt,.md" multiple hidden>
-
-          <div class="url-section">
-            <h3>Or paste a URL</h3>
-            <div class="input-group">
-              <input type="text" id="urlInput" class="input" placeholder="https://example.com">
-              <button class="btn-primary" id="ingestBtn">Ingest</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Compare Panel -->
-      <div class="panel" id="panel-compare">
-        <div class="panel-header">
-          <h2>Compare Documents</h2>
-          <p>Analyze differences between documents</p>
-        </div>
-        <div class="panel-body">
-          <div class="compare-selectors">
-            <div>
-              <label>Document A</label>
-              <select class="input" id="compareDocA"></select>
-            </div>
-            <div class="compare-vs">VS</div>
-            <div>
-              <label>Document B</label>
-              <select class="input" id="compareDocB"></select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Focus (optional)</label>
-            <input type="text" id="compareQuestion" class="input" placeholder="e.g., pricing, features">
-          </div>
-          <button class="btn-primary" id="compareBtn">Compare</button>
-          <div class="result-box" id="compareResult"></div>
-        </div>
-      </div>
-
-      <!-- Extract Panel -->
-      <div class="panel" id="panel-extract">
-        <div class="panel-header">
-          <h2>Extract Fields</h2>
-          <p>Extract structured data from documents</p>
-        </div>
-        <div class="panel-body">
-          <label>Fields to Extract (one per line)</label>
-          <textarea class="textarea" id="extractFields" placeholder="invoice_number&#10;vendor_name&#10;total_amount" rows="6"></textarea>
-          <button class="btn-primary" id="extractBtn">Extract</button>
-          <div class="result-box" id="extractResult"></div>
-        </div>
-      </div>
-
-      <!-- Summarize Panel -->
-      <div class="panel" id="panel-summarize">
-        <div class="panel-header">
-          <h2>Smart Summary</h2>
-          <p>Generate document summaries</p>
-        </div>
-        <div class="panel-body">
-          <div class="form-group">
-            <label>Topic (optional)</label>
-            <input type="text" id="summaryTopic" class="input" placeholder="Leave empty for general summary">
-            <button class="btn-primary" id="summarizeBtn">Summarize</button>
-          </div>
-          <div class="result-box" id="summaryResult"></div>
-        </div>
-      </div>
-
-      <!-- Analytics Panel -->
-      <div class="panel" id="panel-analytics">
-        <div class="panel-header">
-          <h2>Analytics</h2>
-          <p>Pipeline statistics and metrics</p>
-        </div>
-        <div class="panel-body">
-          <div class="stats-grid" id="analyticsStats"></div>
-          <div class="breakdown-box">
-            <h3>Documents by Source</h3>
-            <div id="sourceBreakdown"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RAGAS Panel -->
-      <div class="panel" id="panel-ragas">
-        <div class="panel-header">
-          <h2>RAGAS Evaluation</h2>
-          <p>RAG quality metrics</p>
-        </div>
-        <div class="panel-body">
-          <div class="ragas-controls">
-            <button class="btn-primary" id="refreshRagasBtn">Refresh</button>
-            <button class="btn-secondary" id="clearRagasBtn">Clear</button>
-          </div>
-          <div class="stats-grid" id="ragasStats"></div>
-          <div class="history-box">
-            <h3>Recent Evaluations</h3>
-            <div id="ragasHistory"></div>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-</div>
-
-<!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Settings</h2>
-      <button class="modal-close" data-modal="settingsModal">✕</button>
     </div>
-    <div class="modal-body">
-      <div class="setting-group">
-        <label>Model</label>
-        <input type="text" class="input" value="mistral" readonly>
-      </div>
 
-      <div class="setting-group">
-        <label>Streaming</label>
-        <div class="toggle-group">
-          <button class="toggle toggle--active" id="streamOn">On</button>
-          <button class="toggle" id="streamOff">Off</button>
-        </div>
-      </div>
+    <!-- Toast Notifications Area -->
+    <div class="toast-wrapper" id="toastContainer"></div>
 
-      <div class="setting-group">
-        <label>Management</label>
-        <div class="btn-group">
-          <button class="btn-secondary" id="cacheBtn">Clear Cache</button>
-          <button class="btn-danger" id="clearIndexBtn">Clear Index</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Source Modal -->
-<div class="modal-overlay" id="sourceModal">
-  <div class="modal modal--large">
-    <div class="modal-header">
-      <h2 id="sourceModalTitle">Source</h2>
-      <button class="modal-close" data-modal="sourceModal">✕</button>
-    </div>
-    <div class="modal-body mono" id="sourceModalBody"></div>
-  </div>
-</div>
-
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
-
-<script src="/frontend/js/app.js"></script>
+    <script src="/frontend/js/app.js"></script>
 </body>
 </html>
