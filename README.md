@@ -1,9 +1,10 @@
 # 📄 Document AI + RAG Pipeline v3.0
 
-> Upload any document (PDF, image, Excel, PowerPoint, Word, CSV, text, or web URL) and ask questions in plain English.  
+> Upload any document (PDF, image, Excel, PowerPoint, Word, CSV, text, or web URL) and ask questions in plain English.
 > Fully local, private, and powered by Mistral via Ollama.
 
 <!-- Status Badges -->
+
 ![Version](https://img.shields.io/badge/Version-3.0.0-blueviolet?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -11,6 +12,7 @@
 [![CI](https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline/actions/workflows/ci.yml)
 
 <!-- Technology Badges -->
+
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-LCEL-1C3C3C?style=flat-square&logo=langchain&logoColor=white)
 ![Ollama](https://img.shields.io/badge/LLM-Mistral_via_Ollama-black?style=flat-square)
@@ -27,20 +29,20 @@
 
 ## ✨ What's New in v3.0
 
-| Feature | Description |
-|---------|-------------|
-| 📊 **Excel/CSV/PPTX Support** | Parse spreadsheets and presentations natively |
-| 💬 **Persistent Chat Sessions** | SQLite-backed conversation persistence across browsers |
-| ⚡ **Query Caching (LRU)** | TTL-based cache avoids redundant LLM calls |
-| 🔗 **Knowledge Graph** | Entity extraction + relationship mapping with visualization data |
-| 📄 **PDF Annotation Export** | Highlighted source passages in downloadable PDFs |
-| 🔍 **Document Comparison** | Side-by-side analysis of two documents |
-| 🌐 **Real-time Collaboration** | WebSocket multi-user Q&A in shared rooms |
-| 🛡️ **Rate Limiting** | Sliding-window rate limiter per client IP |
-| 🎯 **Source-Filtered Queries** | Target Q&A to a specific document |
-| 🧠 **Conversational Memory** | Full chat history for both sync and streaming modes |
-| 🔧 **Custom Exceptions** | Structured error hierarchy for clean API responses |
-| 📝 **Structured JSON Logging** | Production-ready log format option |
+| Feature                              | Description                                                      |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| 📊**Excel/CSV/PPTX Support**   | Parse spreadsheets and presentations natively                    |
+| 💬**Persistent Chat Sessions** | SQLite-backed conversation persistence across browsers           |
+| ⚡**Query Caching (LRU)**      | TTL-based cache avoids redundant LLM calls                       |
+| 🔗**Knowledge Graph**          | Entity extraction + relationship mapping with visualization data |
+| 📄**PDF Annotation Export**    | Highlighted source passages in downloadable PDFs                 |
+| 🔍**Document Comparison**      | Side-by-side analysis of two documents                           |
+| 🌐**Real-time Collaboration**  | WebSocket multi-user Q&A in shared rooms                         |
+| 🛡️**Rate Limiting**          | Sliding-window rate limiter per client IP                        |
+| 🎯**Source-Filtered Queries**  | Target Q&A to a specific document                                |
+| 🧠**Conversational Memory**    | Full chat history for both sync and streaming modes              |
+| 🔧**Custom Exceptions**        | Structured error hierarchy for clean API responses               |
+| 📝**Structured JSON Logging**  | Production-ready log format option                               |
 
 ---
 
@@ -116,6 +118,7 @@ open http://localhost:8000
 ### Option 2: Local Install
 
 **Prerequisites:**
+
 - Python 3.10+
 - [Ollama](https://ollama.ai/) installed and running
 
@@ -197,64 +200,64 @@ Document AI + RAG Pipeline/
 
 ### Core
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Serve frontend UI |
-| `GET` | `/health` | Health check with version |
-| `GET` | `/status` | Index stats + Ollama status |
+| Method  | Endpoint       | Description                        |
+| ------- | -------------- | ---------------------------------- |
+| `GET` | `/`          | Serve frontend UI                  |
+| `GET` | `/health`    | Health check with version          |
+| `GET` | `/status`    | Index stats + Ollama status        |
 | `GET` | `/analytics` | Storage, cache, document breakdown |
 
 ### Ingestion
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/ingest` | Upload a single document (PDF/Excel/PPTX/Image/DOCX/CSV/TXT) |
-| `POST` | `/ingest/url` | Ingest a web URL |
-| `POST` | `/ingest/batch` | Upload multiple documents at once |
+| Method   | Endpoint          | Description                                                  |
+| -------- | ----------------- | ------------------------------------------------------------ |
+| `POST` | `/ingest`       | Upload a single document (PDF/Excel/PPTX/Image/DOCX/CSV/TXT) |
+| `POST` | `/ingest/url`   | Ingest a web URL                                             |
+| `POST` | `/ingest/batch` | Upload multiple documents at once                            |
 
 ### Query & AI
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/query` | Ask a question (sync, with source filtering & chat history) |
-| `POST` | `/query-stream` | Ask a question (streaming SSE) |
-| `POST` | `/summarize` | Summarize documents by topic |
-| `POST` | `/extract` | Extract structured fields as JSON |
-| `POST` | `/table-query` | Ask about tables |
-| `POST` | `/compare` | 🆕 Compare two documents |
-| `POST` | `/annotate` | 🆕 Q&A with highlighted PDF export |
+| Method   | Endpoint          | Description                                                 |
+| -------- | ----------------- | ----------------------------------------------------------- |
+| `POST` | `/query`        | Ask a question (sync, with source filtering & chat history) |
+| `POST` | `/query-stream` | Ask a question (streaming SSE)                              |
+| `POST` | `/summarize`    | Summarize documents by topic                                |
+| `POST` | `/extract`      | Extract structured fields as JSON                           |
+| `POST` | `/table-query`  | Ask about tables                                            |
+| `POST` | `/compare`      | 🆕 Compare two documents                                    |
+| `POST` | `/annotate`     | 🆕 Q&A with highlighted PDF export                          |
 
 ### Sessions (v3.0)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/sessions` | Create a new chat session |
-| `GET` | `/sessions` | List recent sessions |
-| `GET` | `/sessions/{id}` | Get session details |
-| `GET` | `/sessions/{id}/messages` | Get messages in a session |
-| `POST` | `/sessions/{id}/messages` | Add a message |
-| `DELETE` | `/sessions/{id}` | Delete a session |
+| Method     | Endpoint                    | Description               |
+| ---------- | --------------------------- | ------------------------- |
+| `POST`   | `/sessions`               | Create a new chat session |
+| `GET`    | `/sessions`               | List recent sessions      |
+| `GET`    | `/sessions/{id}`          | Get session details       |
+| `GET`    | `/sessions/{id}/messages` | Get messages in a session |
+| `POST`   | `/sessions/{id}/messages` | Add a message             |
+| `DELETE` | `/sessions/{id}`          | Delete a session          |
 
 ### Knowledge Graph (v3.0)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/knowledge-graph` | Full graph data (nodes + edges) |
-| `GET` | `/knowledge-graph/entities` | Search entities |
-| `GET` | `/knowledge-graph/entity/{name}` | Entity details + neighbors |
+| Method  | Endpoint                           | Description                     |
+| ------- | ---------------------------------- | ------------------------------- |
+| `GET` | `/knowledge-graph`               | Full graph data (nodes + edges) |
+| `GET` | `/knowledge-graph/entities`      | Search entities                 |
+| `GET` | `/knowledge-graph/entity/{name}` | Entity details + neighbors      |
 
 ### Management
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/clear` | Clear the entire index |
-| `DELETE` | `/document/{filename}` | Delete a specific document |
-| `GET` | `/documents` | 🆕 List all uploaded documents |
-| `GET` | `/cache/stats` | 🆕 Cache statistics |
-| `POST` | `/cache/clear` | 🆕 Clear query cache |
-| `GET` | `/annotated` | 🆕 List annotated PDFs |
-| `GET` | `/annotated/{filename}` | 🆕 Download annotated PDF |
-| `WS` | `/ws/{room_id}` | 🆕 Real-time collaboration |
+| Method     | Endpoint                  | Description                    |
+| ---------- | ------------------------- | ------------------------------ |
+| `POST`   | `/clear`                | Clear the entire index         |
+| `DELETE` | `/document/{filename}`  | Delete a specific document     |
+| `GET`    | `/documents`            | 🆕 List all uploaded documents |
+| `GET`    | `/cache/stats`          | 🆕 Cache statistics            |
+| `POST`   | `/cache/clear`          | 🆕 Clear query cache           |
+| `GET`    | `/annotated`            | 🆕 List annotated PDFs         |
+| `GET`    | `/annotated/{filename}` | 🆕 Download annotated PDF      |
+| `WS`     | `/ws/{room_id}`         | 🆕 Real-time collaboration     |
 
 ---
 
@@ -306,25 +309,25 @@ curl -X POST http://localhost:8000/query \
 
 All settings can be configured via environment variables or a `.env` file:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_MODEL` | `mistral` | LLM model name |
-| `EMBED_MODEL_NAME` | `all-MiniLM-L6-v2` | Embedding model |
-| `CHUNK_SIZE` | `512` | Chunk size in characters |
-| `RETRIEVAL_TOP_K` | `20` | FAISS candidates to retrieve |
-| `RERANKER_TOP_K` | `5` | Final results after reranking |
-| `ENABLE_GPU` | `auto` | GPU mode: `auto`, `true`, `false` |
-| `MULTILINGUAL_MODE` | `false` | Auto-detect document language |
-| `MAX_FILE_SIZE_MB` | `50` | Max upload size |
-| `CACHE_ENABLED` | `true` | 🆕 Enable query caching |
-| `CACHE_MAX_SIZE` | `128` | 🆕 Max cached queries |
-| `CACHE_TTL_SECS` | `3600` | 🆕 Cache TTL in seconds |
-| `RATE_LIMIT_ENABLED` | `true` | 🆕 Enable rate limiting |
-| `RATE_LIMIT_REQUESTS` | `60` | 🆕 Max requests per window |
-| `RATE_LIMIT_WINDOW` | `60` | 🆕 Window size (seconds) |
-| `KNOWLEDGE_GRAPH_ENABLED` | `true` | 🆕 Enable KG extraction |
-| `WS_ENABLED` | `true` | 🆕 Enable WebSocket collaboration |
-| `LOG_FORMAT` | `text` | 🆕 Log format: `text` or `json` |
+| Variable                    | Default              | Description                            |
+| --------------------------- | -------------------- | -------------------------------------- |
+| `OLLAMA_MODEL`            | `mistral`          | LLM model name                         |
+| `EMBED_MODEL_NAME`        | `all-MiniLM-L6-v2` | Embedding model                        |
+| `CHUNK_SIZE`              | `512`              | Chunk size in characters               |
+| `RETRIEVAL_TOP_K`         | `20`               | FAISS candidates to retrieve           |
+| `RERANKER_TOP_K`          | `5`                | Final results after reranking          |
+| `ENABLE_GPU`              | `auto`             | GPU mode:`auto`, `true`, `false` |
+| `MULTILINGUAL_MODE`       | `false`            | Auto-detect document language          |
+| `MAX_FILE_SIZE_MB`        | `50`               | Max upload size                        |
+| `CACHE_ENABLED`           | `true`             | 🆕 Enable query caching                |
+| `CACHE_MAX_SIZE`          | `128`              | 🆕 Max cached queries                  |
+| `CACHE_TTL_SECS`          | `3600`             | 🆕 Cache TTL in seconds                |
+| `RATE_LIMIT_ENABLED`      | `true`             | 🆕 Enable rate limiting                |
+| `RATE_LIMIT_REQUESTS`     | `60`               | 🆕 Max requests per window             |
+| `RATE_LIMIT_WINDOW`       | `60`               | 🆕 Window size (seconds)               |
+| `KNOWLEDGE_GRAPH_ENABLED` | `true`             | 🆕 Enable KG extraction                |
+| `WS_ENABLED`              | `true`             | 🆕 Enable WebSocket collaboration      |
+| `LOG_FORMAT`              | `text`             | 🆕 Log format:`text` or `json`     |
 
 See [`.env.example`](.env.example) for the full list.
 
@@ -332,16 +335,16 @@ See [`.env.example`](.env.example) for the full list.
 
 ## 🗺️ Roadmap
 
-- [x] Multi-format document support (PDF, Image, DOCX, Excel, PPTX, CSV) ✅
-- [x] Persistent conversation sessions with SQLite ✅
-- [x] Knowledge graph extraction ✅
-- [x] Document comparison ✅
-- [x] PDF annotation export ✅
-- [x] Real-time WebSocket collaboration ✅
-- [x] Query caching with TTL ✅
-- [x] API rate limiting ✅
+- [X] Multi-format document support (PDF, Image, DOCX, Excel, PPTX, CSV) ✅
+- [X] Persistent conversation sessions with SQLite ✅
+- [X] Knowledge graph extraction ✅
+- [X] Document comparison ✅
+- [X] PDF annotation export ✅
+- [X] Real-time WebSocket collaboration ✅
+- [X] Query caching with TTL ✅
+- [X] API rate limiting ✅
 - [ ] User authentication for multi-user deployments
-- [ ] Evaluation dashboard using RAGAS metrics
+- [X] Evaluation dashboard using RAGAS metrics
 - [ ] Webhook support for document change notifications
 - [ ] Scheduled ingestion from folders/S3
 
@@ -349,22 +352,22 @@ See [`.env.example`](.env.example) for the full list.
 
 ## 🔧 Troubleshooting
 
-**Ollama connection refused**  
-Make sure Ollama is running: `ollama serve`  
+**Ollama connection refused**
+Make sure Ollama is running: `ollama serve`
 Check it responds: `curl http://localhost:11434/api/tags`
 
-**PaddleOCR first run is slow**  
+**PaddleOCR first run is slow**
 It downloads ~45 MB of model weights on first OCR call. This is normal — subsequent runs are fast.
 
-**Out of memory during query**  
-Switch to a smaller LLM: set `OLLAMA_MODEL=llama3.2:3b` in `.env`  
+**Out of memory during query**
+Switch to a smaller LLM: set `OLLAMA_MODEL=llama3.2:3b` in `.env`
 Or reduce `RETRIEVAL_TOP_K=10` to process fewer candidates.
 
-**FAISS index not found error**  
+**FAISS index not found error**
 Ingest at least one document first before querying:
 `curl -X POST http://localhost:8000/ingest -F "file=@test.pdf"`
 
-**Rate limit exceeded**  
+**Rate limit exceeded**
 Increase `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW` in `.env`, or set `RATE_LIMIT_ENABLED=false`.
 
 ---
