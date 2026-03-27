@@ -3,253 +3,513 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Document AI + RAG Pipeline — Upload documents and ask questions using local AI. Private, fast, and powerful.">
-  <title>Document AI + RAG Pipeline</title>
+  <meta name="description" content="Document AI - Advanced AI-powered document analysis and RAG pipeline">
+  <title>Document AI Pro - Intelligent Document Analysis</title>
   <link rel="stylesheet" href="/frontend/css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
 </head>
 <body>
 
-<!-- Background Effects -->
-<div class="app-bg-grid"></div>
-<div class="app-bg-glow app-bg-glow--1"></div>
-<div class="app-bg-glow app-bg-glow--2"></div>
-<div class="app-bg-glow app-bg-glow--3"></div>
+<!-- Main Container -->
+<div class="ui-app">
 
-<!-- App Layout -->
-<div class="app-layout">
+  <!-- Sticky Header -->
+  <header class="ui-header">
+    <div class="ui-header__container">
+      <!-- Logo & Brand -->
+      <div class="ui-brand">
+        <div class="ui-brand__icon">📄</div>
+        <div class="ui-brand__text">
+          <div class="ui-brand__name">Document AI Pro</div>
+          <div class="ui-brand__tagline">Intelligent RAG Pipeline</div>
+        </div>
+      </div>
 
-  <!-- Header -->
-  <header class="app-header">
-    <div class="app-header__brand">
-      <div class="app-header__logo">📄</div>
-      <div class="app-header__title">
-        <h1>Document AI</h1>
-        <span>RAG Pipeline</span>
+      <!-- Header Search -->
+      <div class="ui-search-box">
+        <svg class="ui-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" class="ui-search-input" id="globalSearch" placeholder="Search documents, settings...">
+      </div>
+
+      <!-- Header Stats -->
+      <div class="ui-header__stats">
+        <div class="ui-stat-item">
+          <span class="ui-stat-label">Vectors</span>
+          <span class="ui-stat-number" id="statsVectors">0</span>
+        </div>
+        <div class="ui-stat-divider"></div>
+        <div class="ui-stat-item">
+          <span class="ui-stat-label">Docs</span>
+          <span class="ui-stat-number" id="statsDocs">0</span>
+        </div>
+        <div class="ui-stat-divider"></div>
+        <div class="ui-stat-item">
+          <span class="ui-stat-label">Status</span>
+          <span class="ui-stat-badge" id="statusBadge">
+            <span class="ui-status-dot" id="statusDot"></span>
+            <span id="statusText">Offline</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Header Actions -->
+      <div class="ui-header__actions">
+        <select class="ui-theme-picker" id="themeSelect">
+          <option value="dark">🌙 Dark</option>
+          <option value="light">☀️ Light</option>
+        </select>
+
+        <button class="ui-header-btn" id="settingsBtn" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v4M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h4M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24M19 12h4m-4-8v6m0 6v4"/>
+          </svg>
+        </button>
+
+        <button class="ui-header-btn" id="helpBtn" title="Help">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+          </svg>
+        </button>
       </div>
     </div>
-    <div class="app-header__actions">
-      <select class="app-theme-select" id="themeSelect">
-        <option value="dark">🌙 Dark</option>
-        <option value="light">☀️ Light</option>
-      </select>
-      <div class="app-status-badge" id="statusBadge">
-        <span class="app-status-dot app-status-dot--offline" id="statusDot"></span>
-        <span id="statusText">Checking...</span>
-      </div>
-      <button class="app-icon-btn" id="settingsBtn" title="Settings">⚙️</button>
-    </div>
+
+    <!-- Header Gradient -->
+    <div class="ui-header__gradient"></div>
   </header>
 
-  <!-- Sidebar -->
-  <aside class="app-sidebar">
-    <nav class="app-sidebar__nav">
-      <div class="app-nav-item app-nav-item--active" data-panel="chat">
-        <span class="app-nav-icon">💬</span> Chat
-      </div>
-      <div class="app-nav-item" data-panel="upload">
-        <span class="app-nav-icon">📤</span> Upload
-      </div>
-      <div class="app-nav-divider"></div>
-      <div class="app-nav-label">Features</div>
-      <div class="app-nav-item" data-panel="compare">
-        <span class="app-nav-icon">🔍</span> Compare
-      </div>
-      <div class="app-nav-item" data-panel="extract">
-        <span class="app-nav-icon">📋</span> Extract
-      </div>
-      <div class="app-nav-item" data-panel="summarize">
-        <span class="app-nav-icon">📝</span> Summarize
-      </div>
-      <div class="app-nav-divider"></div>
-      <div class="app-nav-label">Insights</div>
-      <div class="app-nav-item" data-panel="analytics">
-        <span class="app-nav-icon">📊</span> Analytics
-      </div>
-      <div class="app-nav-item" data-panel="ragas">
-        <span class="app-nav-icon">🎯</span> RAGAS Eval</div>
-    </nav>
+  <!-- Main Workspace -->
+  <div class="ui-workspace">
 
-    <div class="app-nav-divider"></div>
-
-    <!-- Document List -->
-    <div class="app-document-list" id="documentList">
-      <div class="app-document-list__header">
-        <h3>Documents</h3>
-        <span class="app-document-count" id="fileCount">0</span>
+    <!-- Left Sidebar - Navigation & Documents -->
+    <aside class="ui-sidebar">
+      <!-- Quick Actions -->
+      <div class="ui-quick-section">
+        <button class="ui-quick-btn ui-quick-btn--primary" id="newChatBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          New Chat
+        </button>
+        <button class="ui-quick-btn" id="uploadBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+          </svg>
+          Upload
+        </button>
       </div>
-      <div class="app-document-list__items" id="fileList"></div>
-    </div>
-  </aside>
 
-  <!-- Main Content -->
-  <main class="app-main">
+      <!-- Navigation Menu -->
+      <nav class="ui-nav">
+        <div class="ui-nav-section">
+          <div class="ui-nav-section-label">Main</div>
+          <div class="ui-nav-item ui-nav-item--active" data-panel="chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Chat & Query</span>
+            <span class="ui-badge">Pro</span>
+          </div>
+          <div class="ui-nav-item" data-panel="explorer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
+            </svg>
+            <span>Explorer</span>
+          </div>
+        </div>
 
-    <!-- Chat Panel -->
-    <div class="app-panel app-panel--active" id="panel-chat">
-      <div class="app-chat-messages" id="chatMessages">
-        <div class="app-chat-welcome" id="chatWelcome">
-          <div class="app-chat-welcome__icon">🧠</div>
-          <h2>Ask Anything About Your Documents</h2>
-          <p>Upload PDFs, Excel files, PowerPoint, images, or paste a URL.<br>Then ask questions in plain English — all answers are grounded in your data.</p>
-          <div class="app-quick-actions">
-            <div class="app-quick-action" data-action="overview">
-              <span class="app-quick-action__icon">🔎</span> Overview
+        <div class="ui-nav-section">
+          <div class="ui-nav-section-label">Tools</div>
+          <div class="ui-nav-item" data-panel="compare">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 3H5a2 2 0 0 0-2 2v4m0 0a2 2 0 0 0 2 2h4m0-12h10a2 2 0 0 1 2 2v4m0 0a2 2 0 0 1-2 2h-4m0 0V3m0 12v6a2 2 0 0 0 2 2h4m0 0a2 2 0 0 0 2-2v-4m0-6H5a2 2 0 0 0-2 2v4m0 0a2 2 0 0 0 2 2h4"/>
+            </svg>
+            <span>Compare</span>
+          </div>
+          <div class="ui-nav-item" data-panel="extract">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <span>Extract</span>
+          </div>
+          <div class="ui-nav-item" data-panel="summarize">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm3 1h6M7 9h10M7 13h6"/>
+            </svg>
+            <span>Summarize</span>
+          </div>
+        </div>
+
+        <div class="ui-nav-section">
+          <div class="ui-nav-section-label">Analytics</div>
+          <div class="ui-nav-item" data-panel="analytics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            <span>Analytics</span>
+          </div>
+          <div class="ui-nav-item" data-panel="ragas">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+            </svg>
+            <span>RAGAS Eval</span>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Recent Documents -->
+      <div class="ui-documents-section">
+        <div class="ui-section-header">
+          <h3>Recent Documents</h3>
+          <span class="ui-doc-count" id="fileCount">0</span>
+        </div>
+
+        <div class="ui-documents-list" id="fileList"></div>
+
+        <div class="ui-empty-state" id="emptyDocs">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M36 8H12a4 4 0 0 0-4 4v24a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4V12a4 4 0 0 0-4-4z"/>
+            <path d="M16 20h16M16 28h12"/>
+          </svg>
+          <p>No documents yet</p>
+          <p class="ui-empty-hint">Upload documents to get started</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="ui-main">
+
+      <!-- Chat Panel -->
+      <div class="ui-panel ui-panel--active" id="panel-chat">
+        <div class="ui-chat-container">
+          <div class="ui-chat-messages" id="chatMessages">
+            <div class="ui-welcome-screen" id="chatWelcome">
+              <div class="ui-welcome-nav">
+                <button class="ui-welcome-tab ui-welcome-tab--active" data-tab="start">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  Start
+                </button>
+                <button class="ui-welcome-tab" data-tab="features">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                  </svg>
+                  Features
+                </button>
+                <button class="ui-welcome-tab" data-tab="docs">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5z"/>
+                  </svg>
+                  Docs
+                </button>
+              </div>
+
+              <!-- Start Tab -->
+              <div class="ui-welcome-content ui-welcome-content--active" data-content="start">
+                <div class="ui-welcome-hero">
+                  <div class="ui-welcome-icon">🚀</div>
+                  <h1>Welcome to Document AI Pro</h1>
+                  <p>Intelligent document analysis powered by advanced AI and retrieval-augmented generation</p>
+                </div>
+
+                <div class="ui-welcome-grid">
+                  <div class="ui-welcome-card" data-action="overview">
+                    <div class="ui-welcome-card__icon">🔍</div>
+                    <h3>Document Overview</h3>
+                    <p>Get instant summaries and key insights</p>
+                  </div>
+                  <div class="ui-welcome-card" data-action="summarize">
+                    <div class="ui-welcome-card__icon">📝</div>
+                    <h3>Smart Summarize</h3>
+                    <p>Generate concise document summaries</p>
+                  </div>
+                  <div class="ui-welcome-card" data-action="upload">
+                    <div class="ui-welcome-card__icon">📤</div>
+                    <h3>Upload Files</h3>
+                    <p>Add documents to your knowledge base</p>
+                  </div>
+                  <div class="ui-welcome-card" data-action="compare">
+                    <div class="ui-welcome-card__icon">⚖️</div>
+                    <h3>Compare Docs</h3>
+                    <p>Analyze differences and similarities</p>
+                  </div>
+                </div>
+
+                <div class="ui-welcome-prompts">
+                  <h3>Try These Prompts</h3>
+                  <div class="ui-prompt-suggestions">
+                    <button class="ui-prompt-btn">What are the main topics in this document?</button>
+                    <button class="ui-prompt-btn">Summarize the key findings</button>
+                    <button class="ui-prompt-btn">What are the financial figures mentioned?</button>
+                    <button class="ui-prompt-btn">Extract all important dates</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Features Tab -->
+              <div class="ui-welcome-content" data-content="features">
+                <div class="ui-features-list">
+                  <div class="ui-feature-item">
+                    <div class="ui-feature-icon">🧠</div>
+                    <div class="ui-feature-text">
+                      <h3>AI-Powered Analysis</h3>
+                      <p>Advanced language models for deep document understanding</p>
+                    </div>
+                  </div>
+                  <div class="ui-feature-item">
+                    <div class="ui-feature-icon">⚡</div>
+                    <div class="ui-feature-text">
+                      <h3>Real-time Streaming</h3>
+                      <p>Instant responses with streaming text generation</p>
+                    </div>
+                  </div>
+                  <div class="ui-feature-item">
+                    <div class="ui-feature-icon">🔒</div>
+                    <div class="ui-feature-text">
+                      <h3>Privacy First</h3>
+                      <p>Local processing with no data sent to third parties</p>
+                    </div>
+                  </div>
+                  <div class="ui-feature-item">
+                    <div class="ui-feature-icon">📊</div>
+                    <div class="ui-feature-text">
+                      <h3>Advanced Analytics</h3>
+                      <p>Monitor RAG pipeline performance and metrics</p>
+                    </div>
+                  </div>
+                  <div class="ui-feature-item">
+                    <div class="ui-feature-icon">🔄</div>
+                    <div class="ui-feature-text">
+                      <h3>Multi-Format Support</h3>
+                      <p>PDF, DOCX, XLSX, PPTX, Images, and more</p>
+                    </div>
+                  </div>
+                  <div class="ui-feature-item">
+                    <div class="ui-feature-icon">📈</div>
+                    <div class="ui-feature-text">
+                      <h3>RAGAS Evaluation</h3>
+                      <p>Measure and monitor RAG quality metrics</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Docs Tab -->
+              <div class="ui-welcome-content" data-content="docs">
+                <div class="ui-docs-gallery" id="docsGallery"></div>
+              </div>
             </div>
-            <div class="app-quick-action" data-action="summarize">
-              <span class="app-quick-action__icon">📝</span> Summarize
-            </div>
-            <div class="app-quick-action" data-action="upload">
-              <span class="app-quick-action__icon">📤</span> Upload
+          </div>
+
+          <!-- Chat Input -->
+          <div class="ui-chat-input-box">
+            <div class="ui-chat-input-wrapper">
+              <textarea class="ui-chat-input" id="chatInput" placeholder="Ask anything about your documents..." rows="1"></textarea>
+              <button class="ui-send-button" id="sendBtn">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16.6915026,12.4744748 L3.50612381,13.2599618 C3.19218622,13.2599618 3.03521743,13.4170592 3.03521743,13.5741566 L1.15159189,20.0151496 C0.8376543,20.8006365 0.99,21.89 1.77946707,22.52 C2.41,22.99 3.50612381,23.1 4.13399899,22.8429026 L21.714504,14.0454487 C22.6563168,13.5741566 23.1272231,12.6315722 22.9702544,11.6889879 L4.13399899,1.16346272 C3.34915502,0.9 2.40734225,1.00636533 1.77946707,1.4776575 C0.994623095,2.10604706 0.837654326,3.0486314 1.15159189,3.99021575 L3.03521743,10.4311088 C3.03521743,10.5882061 3.19218622,10.7453035 3.50612381,10.7453035 L16.6915026,11.5307905 C16.6915026,11.5307905 17.1624089,11.5307905 17.1624089,12.0020827 C17.1624089,12.4744748 16.6915026,12.4744748 16.6915026,12.4744748 Z"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
       </div>
-      <div class="app-chat-input-area">
-        <div class="app-chat-input-wrapper">
-          <textarea class="app-chat-input" id="chatInput" placeholder="Ask a question about your documents..." rows="1"></textarea>
-          <div class="app-chat-input-actions">
-            <button class="app-btn app-btn--send" id="sendBtn" title="Send">➤</button>
+
+      <!-- Explorer Panel -->
+      <div class="ui-panel" id="panel-explorer">
+        <div class="ui-panel-header">
+          <h2>Document Explorer</h2>
+          <p>Browse and manage your document library</p>
+        </div>
+        <div class="ui-panel-content">
+          <div class="ui-explorer-container" id="explorerContainer">
+            <div class="ui-grid" id="docGrid"></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Upload Panel -->
-    <div class="app-panel" id="panel-upload">
-      <div class="app-upload-area" id="uploadZone">
-        <div class="app-upload-area__icon">📁</div>
-        <h3>Drop documents here or click to browse</h3>
-        <p>Maximum file size: 50 MB</p>
-        <div class="app-upload-formats">
-          <span class="app-format-tag">PDF</span>
-          <span class="app-format-tag">DOCX</span>
-          <span class="app-format-tag">XLSX</span>
-          <span class="app-format-tag">CSV</span>
-          <span class="app-format-tag">PPTX</span>
-          <span class="app-format-tag">PNG</span>
-          <span class="app-format-tag">JPG</span>
-          <span class="app-format-tag">TXT</span>
-          <span class="app-format-tag">MD</span>
+      <!-- Compare Panel -->
+      <div class="ui-panel" id="panel-compare">
+        <div class="ui-panel-header">
+          <h2>Compare Documents</h2>
+          <p>Find differences and similarities</p>
         </div>
-        <div class="app-upload-progress" id="uploadProgress">
-          <div class="app-progress-bar">
-            <div class="app-progress-fill" id="progressFill"></div>
+        <div class="ui-panel-content">
+          <div class="ui-compare-box">
+            <div class="ui-compare-row">
+              <div class="ui-compare-col">
+                <label class="ui-label">Document A</label>
+                <select class="ui-select" id="compareDocA"></select>
+              </div>
+              <div class="ui-compare-vs">↔</div>
+              <div class="ui-compare-col">
+                <label class="ui-label">Document B</label>
+                <select class="ui-select" id="compareDocB"></select>
+              </div>
+            </div>
+            <div>
+              <label class="ui-label">Focus (optional)</label>
+              <input type="text" class="ui-input" id="compareQuestion" placeholder="e.g., pricing, features...">
+            </div>
+            <button class="ui-btn ui-btn--primary" id="compareBtn">Compare</button>
+            <div class="ui-compare-result" id="compareResult"></div>
           </div>
-          <div class="app-progress-text" id="progressText">Uploading...</div>
         </div>
       </div>
-      <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.tiff,.txt,.md" multiple hidden>
-      <div class="app-url-ingest">
-        <div class="app-url-ingest__input">
-          <input type="text" id="urlInput" class="app-input" placeholder="Or paste a web URL to ingest...">
-          <button class="app-btn app-btn--primary" id="ingestBtn">Ingest URL</button>
+
+      <!-- Extract Panel -->
+      <div class="ui-panel" id="panel-extract">
+        <div class="ui-panel-header">
+          <h2>Extract Fields</h2>
+          <p>Extract structured data from documents</p>
+        </div>
+        <div class="ui-panel-content">
+          <label class="ui-label">Fields to Extract</label>
+          <textarea class="ui-textarea" id="extractFields" placeholder="invoice_number&#10;vendor_name&#10;total_amount" rows="6"></textarea>
+          <button class="ui-btn ui-btn--primary" id="extractBtn">Extract</button>
+          <div id="extractResult"></div>
         </div>
       </div>
-    </div>
 
-    <!-- Compare Panel -->
-    <div class="app-panel" id="panel-compare">
-      <h2 class="app-panel-title">📑 Document Comparison</h2>
-      <div class="app-compare-selector">
-        <select class="app-input" id="compareDocA"><option value="">Select Document A</option></select>
-        <span class="app-compare-vs">VS</span>
-        <select class="app-input" id="compareDocB"><option value="">Select Document B</option></select>
-      </div>
-      <div class="app-compare-query">
-        <input type="text" id="compareQuestion" class="app-input" placeholder="Specific comparison question (optional)...">
-        <button class="app-btn app-btn--primary" id="compareBtn">Compare</button>
-      </div>
-      <div class="app-compare-result" id="compareResult"></div>
-    </div>
-
-    <!-- Extract Panel -->
-    <div class="app-panel" id="panel-extract">
-      <h2 class="app-panel-title">📋 Field Extraction</h2>
-      <div class="app-extract-form">
-        <textarea id="extractFields" class="app-textarea" placeholder="Enter field names, one per line:&#10;invoice_number&#10;vendor_name&#10;total_amount&#10;due_date" rows="6"></textarea>
-        <button class="app-btn app-btn--primary" id="extractBtn">Extract Fields</button>
-      </div>
-      <div id="extractResult"></div>
-    </div>
-
-    <!-- Summarize Panel -->
-    <div class="app-panel" id="panel-summarize">
-      <h2 class="app-panel-title">📝 Smart Summary</h2>
-      <div class="app-summarize-form">
-        <div class="app-form-row">
-          <input type="text" id="summaryTopic" class="app-input" placeholder="Topic to summarize (or leave empty for general)...">
-          <button class="app-btn app-btn--primary" id="summarizeBtn">Summarize</button>
+      <!-- Summarize Panel -->
+      <div class="ui-panel" id="panel-summarize">
+        <div class="ui-panel-header">
+          <h2>Smart Summary</h2>
+          <p>Generate intelligent document summaries</p>
+        </div>
+        <div class="ui-panel-content">
+          <label class="ui-label">Topic (optional)</label>
+          <div class="ui-form-row">
+            <input type="text" class="ui-input" id="summaryTopic" placeholder="Leave empty for general summary...">
+            <button class="ui-btn ui-btn--primary" id="summarizeBtn">Summarize</button>
+          </div>
+          <div class="ui-summary-result" id="summaryResult"></div>
         </div>
       </div>
-      <div class="app-summary-result" id="summaryResult"></div>
-    </div>
 
-    <!-- Analytics Panel -->
-    <div class="app-panel" id="panel-analytics">
-      <h2 class="app-panel-title">📊 Pipeline Analytics</h2>
-      <div class="app-stats-grid" id="analyticsStats"></div>
-      <h3 class="app-panel-subtitle">Documents by Source</h3>
-      <div class="app-breakdown" id="sourceBreakdown"></div>
-    </div>
-
-    <!-- RAGAS Panel -->
-    <div class="app-panel" id="panel-ragas">
-      <h2 class="app-panel-title">🎯 RAGAS Evaluation Dashboard</h2>
-      <p class="app-panel-subtitle app-panel-subtitle--muted">Measure RAG quality: Faithfulness · Relevancy · Precision · Recall</p>
-      <div class="app-ragas-grid" id="ragasMetrics"></div>
-      <div class="app-ragas-controls">
-        <button class="app-btn app-btn--primary" id="refreshRagasBtn">Refresh</button>
-        <button class="app-btn app-btn--secondary" id="clearRagasBtn">Clear History</button>
+      <!-- Analytics Panel -->
+      <div class="ui-panel" id="panel-analytics">
+        <div class="ui-panel-header">
+          <h2>Pipeline Analytics</h2>
+          <p>Monitor your RAG pipeline performance</p>
+        </div>
+        <div class="ui-panel-content">
+          <div class="ui-stats-grid" id="analyticsStats"></div>
+          <div class="ui-breakdown-section">
+            <h3>Documents by Source</h3>
+            <div class="ui-breakdown" id="sourceBreakdown"></div>
+          </div>
+        </div>
       </div>
-      <div class="app-stats-grid" id="ragasStats"></div>
-      <h3 class="app-panel-subtitle">Recent Evaluations</h3>
-      <div class="app-ragas-history" id="ragasHistory"></div>
-    </div>
 
-  </main>
+      <!-- RAGAS Panel -->
+      <div class="ui-panel" id="panel-ragas">
+        <div class="ui-panel-header">
+          <h2>RAGAS Evaluation</h2>
+          <p>Measure RAG quality metrics</p>
+        </div>
+        <div class="ui-panel-content">
+          <div class="ui-ragas-metrics" id="ragasMetrics"></div>
+          <div class="ui-ragas-controls">
+            <button class="ui-btn ui-btn--primary" id="refreshRagasBtn">Refresh</button>
+            <button class="ui-btn ui-btn--secondary" id="clearRagasBtn">Clear</button>
+          </div>
+          <div class="ui-stats-grid" id="ragasStats"></div>
+          <div class="ui-history-section">
+            <h3>Recent Evaluations</h3>
+            <div id="ragasHistory" class="ui-history-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Panel -->
+      <div class="ui-panel" id="panel-upload">
+        <div class="ui-panel-header">
+          <h2>Upload Documents</h2>
+          <p>Add files to your knowledge base</p>
+        </div>
+        <div class="ui-panel-content">
+          <div class="ui-upload-zone" id="uploadZone">
+            <svg class="ui-upload-icon" viewBox="0 0 48 48">
+              <path d="M24 4L12 16h8v12h8V16h8z" fill="none" stroke="currentColor" stroke-width="2"/>
+              <circle cx="24" cy="37" r="2" fill="currentColor"/>
+            </svg>
+            <h3>Drop files here or click to browse</h3>
+            <p>Max 50 MB per file</p>
+            <div class="ui-format-tags">
+              <span>PDF</span><span>DOCX</span><span>XLSX</span><span>CSV</span><span>PPTX</span><span>Images</span>
+            </div>
+            <div class="ui-upload-progress" id="uploadProgress">
+              <div class="ui-progress-bar">
+                <div class="ui-progress-fill" id="progressFill"></div>
+              </div>
+              <p id="progressText">Uploading...</p>
+            </div>
+          </div>
+          <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.tiff,.txt,.md" multiple hidden>
+
+          <div class="ui-url-section">
+            <h3>Or paste a URL</h3>
+            <div class="ui-url-input-group">
+              <input type="text" id="urlInput" class="ui-input" placeholder="https://example.com/document">
+              <button class="ui-btn ui-btn--primary" id="ingestBtn">Ingest</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
 </div>
 
 <!-- Settings Modal -->
-<div class="app-modal-overlay" id="settingsModal">
-  <div class="app-modal">
-    <div class="app-modal-header">
-      <h2>⚙️ Settings</h2>
-      <button class="app-icon-btn app-icon-btn--close" title="Close">✕</button>
+<div class="ui-modal-overlay" id="settingsModal">
+  <div class="ui-modal">
+    <div class="ui-modal-header">
+      <h2>Settings & Preferences</h2>
+      <button class="ui-modal-close" title="Close">✕</button>
     </div>
-    <div class="app-modal-body">
-      <div class="app-form-group">
-        <label class="app-form-label">Model</label>
-        <input type="text" value="mistral" readonly class="app-input">
+    <div class="ui-modal-body">
+      <div class="ui-settings-group">
+        <label class="ui-label">Model</label>
+        <input type="text" class="ui-input" value="mistral" readonly>
       </div>
-      <div class="app-form-group">
-        <label class="app-form-label">Streaming</label>
-        <div class="app-btn-group">
-          <button class="app-btn app-btn--primary" id="streamOn">On</button>
-          <button class="app-btn app-btn--secondary" id="streamOff">Off</button>
+
+      <div class="ui-settings-group">
+        <label class="ui-label">Streaming Mode</label>
+        <div class="ui-toggle-group">
+          <button class="ui-toggle ui-toggle--active" id="streamOn">On</button>
+          <button class="ui-toggle" id="streamOff">Off</button>
         </div>
       </div>
-      <div class="app-form-actions">
-        <button class="app-btn app-btn--secondary" id="cacheBtn">🗑️ Clear Query Cache</button>
-        <button class="app-btn app-btn--danger" id="clearIndexBtn">⚠️ Clear Entire Index</button>
+
+      <div class="ui-settings-group">
+        <label class="ui-label">Management</label>
+        <div class="ui-btn-group">
+          <button class="ui-btn ui-btn--secondary" id="cacheBtn">Clear Cache</button>
+          <button class="ui-btn ui-btn--danger" id="clearIndexBtn">Clear Index</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Source Modal -->
-<div class="app-modal-overlay" id="sourceModal">
-  <div class="app-modal">
-    <div class="app-modal-header">
+<div class="ui-modal-overlay" id="sourceModal">
+  <div class="ui-modal ui-modal--large">
+    <div class="ui-modal-header">
       <h2 id="sourceModalTitle">Source</h2>
-      <button class="app-icon-btn app-icon-btn--close" title="Close">✕</button>
+      <button class="ui-modal-close" title="Close">✕</button>
     </div>
-    <div class="app-modal-body app-modal-body--mono" id="sourceModalBody"></div>
+    <div class="ui-modal-body ui-modal-body--mono" id="sourceModalBody"></div>
   </div>
 </div>
 
 <!-- Toast Container -->
-<div class="app-toast-container" id="toastContainer"></div>
+<div class="ui-toast-container" id="toastContainer"></div>
 
 <script src="/frontend/js/app.js"></script>
 </body>
