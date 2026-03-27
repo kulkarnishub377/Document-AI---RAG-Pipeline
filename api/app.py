@@ -587,6 +587,13 @@ async def cache_clear():
 # Document Management
 # ─────────────────────────────────────────────────────────────────────────────
 
+@app.get("/download/{filename}", tags=["Management"], summary="Download a raw document")
+async def download_document(filename: str):
+    file_path = UPLOAD_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(str(file_path))
+
 @app.post("/clear", tags=["Management"], summary="Clear the entire index")
 async def clear():
     return pipeline.clear_index()

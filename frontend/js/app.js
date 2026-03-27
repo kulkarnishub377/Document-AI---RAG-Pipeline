@@ -434,7 +434,7 @@ async function loadDocuments() {
         docs.forEach(doc => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${escapeHtml(doc.filename)}</strong></td>
+                <td><a href="#" style="color:var(--accent-primary);text-decoration:none;font-weight:600;" onclick="openPreview('${escapeHtml(doc.filename)}')">${escapeHtml(doc.filename)}</a></td>
                 <td><span class="pill-btn">${escapeHtml(doc.suffix.toUpperCase().replace('.',''))}</span></td>
                 <td>${doc.size_mb} MB</td>
                 <td>${new Date(doc.modified || Date.now()).toLocaleDateString()}</td>
@@ -681,6 +681,33 @@ getEl('clearCacheBtn').addEventListener('click', async () => {
         DOM.settingsModal.classList.remove('active');
     } catch {}
 });
+
+// Document Preview Modal
+window.openPreview = (filename) => {
+    getEl('previewModalTitle').textContent = filename;
+    const ext = filename.split('.').pop().toLowerCase();
+    const frame = getEl('previewFrame');
+    const unsupported = getEl('previewUnsupported');
+    const downloadBtn = getEl('previewDownloadBtn');
+    
+    // Construct local download URL
+    const url = `/download/${encodeURIComponent(filename)}`;
+    
+    // File types most modern browsers can reliably iframe
+    const previewable = ['pdf', 'txt', 'png', 'jpg', 'jpeg', 'md'];
+    
+    if (previewable.includes(ext)) {
+        frame.style.display = 'block';
+        unsupported.style.display = 'none';
+        frame.src = url;
+    } else {
+        frame.style.display = 'none';
+        unsupported.style.display = 'block';
+        downloadBtn.href = url;
+    }
+    
+    getEl('previewModal').classList.add('active');
+};
 
 
 // Initialization hooks
