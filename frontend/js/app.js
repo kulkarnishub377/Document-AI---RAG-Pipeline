@@ -356,7 +356,9 @@ async function handleStreamQuery(q) {
     DOM.chatStream.scrollTop = DOM.chatStream.scrollHeight;
     
     const bubble = row.querySelector('.msg-bubble');
+    const wrapper = row.querySelector('.msg-content-wrapper');
     let fullAnswer = "";
+    let sources = [];
 
     try {
         const response = await fetch('/query-stream', {
@@ -383,19 +385,33 @@ async function handleStreamQuery(q) {
                 if (line.startsWith('data: ')) {
                     const data = line.slice(6);
                     if (data === '[DONE]') continue;
-                    fullAnswer += data;
-                    bubble.innerHTML = escapeHtml(fullAnswer).replace(/\n\n/g, '<br><br>');
+                    try {
+                        const payload = JSON.parse(data);
+                        if (Array.isArray(payload.sources)) {
+                            sources = payload.sources;
+                        }
+                        if (payload.delta) {
+                            fullAnswer += payload.delta;
+                            bubble.innerHTML = escapeHtml(fullAnswer).replace(/\n\n/g, '<br><br>');
+                        }
+                    } catch (e) {
+                        fullAnswer += data;
+                        bubble.innerHTML = escapeHtml(fullAnswer).replace(/\n\n/g, '<br><br>');
+                    }
                     DOM.chatStream.scrollTop = DOM.chatStream.scrollHeight;
                 }
             }
         }
-        
-        // Sync context to session history manually since stream endpoint doesn't auto-save in current backend architecture
-        await apiCall(`/sessions/${STATE.currentSessionId}/messages`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({role: 'assistant', content: fullAnswer, mode: 'qa'})
-        });
+
+        if (sources.length > 0) {
+            const deck = document.createElement('div');
+            deck.className = 'sources-deck';
+            deck.innerHTML = sources.map(s => {
+                const safeObj = escapeHtml(JSON.stringify(s));
+                return `<div class="source-card" onclick='viewSourceCard(this)' data-source='${safeObj}'>📎 ${escapeHtml(s.source)} (p.${s.page || 1})</div>`;
+            }).join('');
+            wrapper.appendChild(deck);
+        }
 
     } catch (err) {
         bubble.textContent = `⚠️ Streaming Error: ${err.message}`;
@@ -562,7 +578,7 @@ DOM.runCompareBtn.addEventListener('click', async () => {
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({doc_a: a, doc_b: b, question: q})
         });
-        DOM.compareResult.innerHTML = escapeHtml(data.comparison || JSON.stringify(data)).replace(/\n/g, '<br>');
+        DOM.compareResult.innerHTML = escapeHtml(data.comparison || data.analysis || JSON.stringify(data)).replace(/\n/g, '<br>');
     } catch (e) {
         DOM.compareResult.innerHTML = `<span class="text-danger">Failed to evaluate: ${e.message}</span>`;
     }
@@ -579,7 +595,7 @@ DOM.runExtractBtn.addEventListener('click', async () => {
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({fields, context_query: DOM.extractContext.value})
         });
-        DOM.extractResult.innerHTML = escapeHtml(JSON.stringify(data.extracted_data || data, null, 2));
+        DOM.extractResult.innerHTML = escapeHtml(JSON.stringify(data.extracted_data || data.fields || data, null, 2));
     } catch(e) {
         DOM.extractResult.innerHTML = escapeHtml(e.message);
     }

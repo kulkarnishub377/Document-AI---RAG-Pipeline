@@ -35,17 +35,17 @@ class QueryCache:
         self._misses = 0
 
     @staticmethod
-    def _make_key(query: str, mode: str = "qa") -> str:
+    def _make_key(query: str, mode: str = "qa", context_key: str = "") -> str:
         """Create a cache key from query text and mode."""
-        raw = f"{mode}:{query.strip().lower()}"
+        raw = f"{mode}:{context_key}:{query.strip().lower()}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
 
-    def get(self, query: str, mode: str = "qa") -> Optional[Dict[str, Any]]:
+    def get(self, query: str, mode: str = "qa", context_key: str = "") -> Optional[Dict[str, Any]]:
         """Retrieve a cached response. Returns None on miss."""
         if not self.enabled:
             return None
 
-        key = self._make_key(query, mode)
+        key = self._make_key(query, mode, context_key)
         with self._lock:
             entry = self._cache.get(key)
             if entry is None:
@@ -65,12 +65,12 @@ class QueryCache:
             logger.debug(f"Cache HIT for key: {key[:8]}…")
             return entry["data"]
 
-    def put(self, query: str, data: Dict[str, Any], mode: str = "qa") -> None:
+    def put(self, query: str, data: Dict[str, Any], mode: str = "qa", context_key: str = "") -> None:
         """Store a response in cache."""
         if not self.enabled:
             return
 
-        key = self._make_key(query, mode)
+        key = self._make_key(query, mode, context_key)
         with self._lock:
             if key in self._cache:
                 self._cache.move_to_end(key)

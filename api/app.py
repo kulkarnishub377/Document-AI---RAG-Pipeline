@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import asdict
 from pathlib import Path
 from datetime import datetime
@@ -131,6 +132,17 @@ class QueryResponse(BaseModel):
     sources: List[SourceResult]
 
 
+def _safe_filename(filename: str) -> str:
+    """Return a safe basename for uploads/downloads or raise 400 for path tricks."""
+    if not filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+
+    safe_name = Path(filename).name
+    if safe_name != filename or any(sep in filename for sep in ("/", "\\")) or ":" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    return safe_name
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Middleware: Rate Limiting
 # ─────────────────────────────────────────────────────────────────────────────
@@ -250,12 +262,14 @@ async def ingest(file: UploadFile = File(...)):
     if suffix not in ALLOWED_EXTENSIONS:
         raise UnsupportedFileTypeError(suffix, ALLOWED_EXTENSIONS)
 
+    safe_name = _safe_filename(file.filename or "")
+
     content = await file.read()
     size_mb = len(content) / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
         raise FileTooLargeError(size_mb, MAX_FILE_SIZE_MB)
 
-    save_path = UPLOAD_DIR / file.filename
+    save_path = UPLOAD_DIR / safe_name
     with open(save_path, "wb") as f:
         f.write(content)
 
@@ -288,13 +302,19 @@ async def ingest_batch(files: List[UploadFile] = File(...)):
             results.append({"file": file.filename, "error": f"Unsupported type: {suffix}"})
             continue
 
+        try:
+            safe_name = _safe_filename(file.filename or "")
+        except HTTPException as exc:
+            results.append({"file": file.filename, "error": exc.detail})
+            continue
+
         content = await file.read()
         size_mb = len(content) / (1024 * 1024)
         if size_mb > MAX_FILE_SIZE_MB:
             results.append({"file": file.filename, "error": f"Too large: {size_mb:.1f} MB"})
             continue
 
-        save_path = UPLOAD_DIR / file.filename
+        save_path = UPLOAD_DIR / safe_name
         with open(save_path, "wb") as f:
             f.write(content)
 
@@ -356,10 +376,41 @@ async def query_stream(req: QueryRequest):
     if req.session_id and not history:
         history = session_manager.get_chat_history(req.session_id)
 
-    return StreamingResponse(
-        stream_answer_question(req.question, results, history=history),
-        media_type="text/event-stream",
-    )
+    async def event_stream():
+        sources_payload = []
+        answer_parts: List[str] = []
+
+        async for chunk in stream_answer_question(req.question, results, history=history):
+            yield chunk
+            if not chunk.startswith("data: "):
+                continue
+
+            payload_text = chunk[6:].strip()
+            if payload_text == "[DONE]":
+                continue
+
+            try:
+                payload = json.loads(payload_text)
+            except json.JSONDecodeError:
+                continue
+
+            if isinstance(payload.get("sources"), list):
+                sources_payload = payload["sources"]
+            delta = payload.get("delta")
+            if delta:
+                answer_parts.append(delta)
+
+        if req.session_id and answer_parts:
+            session_manager.add_message(req.session_id, "user", req.question, mode="qa")
+            session_manager.add_message(
+                req.session_id,
+                "assistant",
+                "".join(answer_parts).strip(),
+                sources=sources_payload,
+                mode="qa",
+            )
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @app.post("/summarize", tags=["Query"], summary="Summarize documents by topic")
@@ -392,7 +443,10 @@ async def compare_documents(req: CompareRequest):
     """Compare two documents and get analysis of similarities, differences, and unique content."""
     if not check_ollama_connection():
         raise OllamaNotReachableError("configured URL")
-    return pipeline.compare_documents(req.doc_a, req.doc_b, req.question)
+    result = pipeline.compare_documents(req.doc_a, req.doc_b, req.question)
+    if "analysis" in result and "comparison" not in result:
+        result["comparison"] = result["analysis"]
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -502,10 +556,11 @@ async def list_annotated():
 @app.get("/annotated/{filename}", tags=["PDF Annotation"], summary="Download an annotated PDF")
 async def download_annotated(filename: str):
     from config import ANNOTATED_PDF_DIR
-    file_path = ANNOTATED_PDF_DIR / filename
+    safe_name = _safe_filename(filename)
+    file_path = ANNOTATED_PDF_DIR / safe_name
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Annotated PDF '{filename}' not found")
-    return FileResponse(str(file_path), media_type="application/pdf", filename=filename)
+    return FileResponse(str(file_path), media_type="application/pdf", filename=safe_name)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -589,7 +644,8 @@ async def cache_clear():
 
 @app.get("/download/{filename}", tags=["Management"], summary="Download a raw document")
 async def download_document(filename: str):
-    file_path = UPLOAD_DIR / filename
+    safe_name = _safe_filename(filename)
+    file_path = UPLOAD_DIR / safe_name
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(str(file_path))
@@ -602,7 +658,7 @@ async def clear():
 @app.delete("/document/{filename}", tags=["Management"], summary="Delete a specific document")
 async def delete_document(filename: str):
     try:
-        return pipeline.delete_document(filename)
+        return pipeline.delete_document(_safe_filename(filename))
     except DocumentNotFoundError:
         raise HTTPException(status_code=404, detail=f"Document '{filename}' not found in index")
 

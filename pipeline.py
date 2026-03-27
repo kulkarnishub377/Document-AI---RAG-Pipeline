@@ -24,6 +24,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -272,8 +273,17 @@ def query(
     """
     logger.info(f"QUERY: '{question}'" + (f" [source={source_filter}]" if source_filter else ""))
 
+    history_key = ""
+    if history:
+        try:
+            history_key = json.dumps(history[-5:], sort_keys=True, ensure_ascii=False)
+        except Exception:
+            history_key = str(history[-5:])
+
+    cache_context = f"source={source_filter or ''}|history={history_key}"
+
     # Check cache first
-    cached = query_cache.get(question, mode="qa")
+    cached = query_cache.get(question, mode="qa", context_key=cache_context)
     if cached:
         logger.info("Query cache HIT — returning cached result")
         return cached
@@ -282,7 +292,7 @@ def query(
     answer = answer_question(question, results, history=history)
 
     # Store in cache
-    query_cache.put(question, answer, mode="qa")
+    query_cache.put(question, answer, mode="qa", context_key=cache_context)
 
     return answer
 
