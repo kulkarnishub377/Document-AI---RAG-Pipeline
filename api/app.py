@@ -615,3 +615,80 @@ async def list_documents():
                 "modified": datetime.fromtimestamp(f.stat().st_mtime).isoformat(),
             })
     return docs
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RAGAS Evaluation Dashboard (v3.0)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EvalRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+    answer: str = Field(..., min_length=1)
+    contexts: List[str] = Field(..., min_length=1)
+    run_all: bool = Field(default=True, description="Run all 4 metrics (slower)")
+
+
+@app.post("/evaluate", tags=["Evaluation"], summary="Run RAGAS evaluation on a Q&A pair")
+async def evaluate_qa(req: EvalRequest):
+    """
+    Evaluate the quality of a Q&A interaction using RAGAS metrics:
+    faithfulness, answer relevancy, context precision, context recall.
+    """
+    if not check_ollama_connection():
+        raise OllamaNotReachableError("configured URL")
+
+    from features.evaluation import evaluator
+    result = evaluator.evaluate(
+        question=req.question,
+        answer=req.answer,
+        contexts=req.contexts,
+        run_all=req.run_all,
+    )
+    return asdict(result)
+
+
+@app.post("/evaluate/auto", tags=["Evaluation"], summary="Query + auto-evaluate in one call")
+async def evaluate_auto(req: QueryRequest):
+    """Ask a question and automatically evaluate the answer quality."""
+    if not check_ollama_connection():
+        raise OllamaNotReachableError("configured URL")
+
+    # Run query
+    result = pipeline.query(req.question, source_filter=req.source_filter)
+    contexts = [s.get("excerpt", "") for s in result.get("sources", [])]
+
+    # Run evaluation
+    from features.evaluation import evaluator
+    eval_result = evaluator.evaluate(
+        question=req.question,
+        answer=result["answer"],
+        contexts=contexts,
+    )
+
+    return {
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "evaluation": asdict(eval_result),
+    }
+
+
+@app.get("/evaluate/dashboard", tags=["Evaluation"], summary="RAGAS dashboard statistics")
+async def eval_dashboard():
+    """Get aggregate RAGAS evaluation statistics and trend data."""
+    from features.evaluation import evaluator
+    return evaluator.get_dashboard_stats()
+
+
+@app.get("/evaluate/history", tags=["Evaluation"], summary="Evaluation history")
+async def eval_history(limit: int = 50):
+    """Get recent evaluation results."""
+    from features.evaluation import evaluator
+    return evaluator.get_history(limit)
+
+
+@app.post("/evaluate/clear", tags=["Evaluation"], summary="Clear evaluation history")
+async def eval_clear():
+    from features.evaluation import evaluator
+    count = evaluator.clear_history()
+    return {"status": "cleared", "entries_removed": count}
+
