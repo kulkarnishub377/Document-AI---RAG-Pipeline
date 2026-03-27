@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "doc-rag-pipeline"
-version = "2.0.0"
+version = "3.0.0"
 description = "Intelligent Document Q&A pipeline using local models, FAISS, and Mistral."
 readme = "README.md"
 license = {text = "MIT"}
@@ -29,6 +29,7 @@ classifiers = [
 keywords = [
     "document-ai", "faiss", "ollama", "langchain",
     "ocr", "semantic-search", "vector-store", "question-answering",
+    "knowledge-graph", "websocket", "pdf-annotation",
 ]
 dependencies = [
     # OCR + Layout
@@ -39,6 +40,8 @@ dependencies = [
     "pdfplumber==0.11.0",
     "PyMuPDF>=1.24.5",
     "python-docx==1.1.2",
+    "openpyxl>=3.1.2",
+    "python-pptx>=0.6.23",
 
     # Chunking & LLM
     "langchain>=0.3.0",
