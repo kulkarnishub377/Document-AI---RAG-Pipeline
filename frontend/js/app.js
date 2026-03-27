@@ -97,6 +97,12 @@ function setStreaming(on) {
   showToast(`Streaming ${on ? 'enabled' : 'disabled'}`, 'info');
 }
 
+// ── Theme Switcher ───────────────────────────────────────────────────────
+function changeTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+}
+
 // ── API Calls ────────────────────────────────────────────────────────────
 async function api(path, options = {}) {
   try {
