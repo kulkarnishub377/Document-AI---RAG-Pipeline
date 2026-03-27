@@ -31,44 +31,47 @@
                 </div>
             </div>
 
-            <div class="nav-section">
-                <div class="nav-title">WORKSPACE</div>
-                <button class="nav-btn active" data-target="view-chat">
-                    <span class="nav-icon">💬</span> Chat API
-                </button>
-                <button class="nav-btn" data-target="view-documents">
-                    <span class="nav-icon">📂</span> Data Lake
-                </button>
-            </div>
+            <div class="sidebar-body">
+                <div class="nav-section">
+                    <div class="nav-title">WORKSPACE</div>
+                    <button class="nav-btn active" data-target="view-chat">
+                        <span class="nav-icon">💬</span> Chat API
+                    </button>
+                    <button class="nav-btn" data-target="view-documents">
+                        <span class="nav-icon">📂</span> Data Lake
+                    </button>
+                </div>
 
-            <div class="nav-section">
-                <div class="nav-title">INTELLIGENCE</div>
-                <button class="nav-btn" data-target="view-compare">
-                    <span class="nav-icon">⚖️</span> Compare Docs
-                </button>
-                <button class="nav-btn" data-target="view-extract">
-                    <span class="nav-icon">📋</span> Extract Fields
-                </button>
-                <button class="nav-btn" data-target="view-summarize">
-                    <span class="nav-icon">📝</span> Smart Summary
-                </button>
-                <button class="nav-btn" data-target="view-analytics">
-                    <span class="nav-icon">📊</span> Pipeline Analytics
-                </button>
-                <button class="nav-btn" data-target="view-ragas">
-                    <span class="nav-icon">🎯</span> RAGAS Metrics
-                </button>
-            </div>
+                <div class="nav-section">
+                    <div class="nav-title">INTELLIGENCE</div>
+                    <button class="nav-btn" data-target="view-compare">
+                        <span class="nav-icon">⚖️</span> Compare Docs
+                    </button>
+                    <button class="nav-btn" data-target="view-extract">
+                        <span class="nav-icon">📋</span> Extract Fields
+                    </button>
+                    <button class="nav-btn" data-target="view-summarize">
+                        <span class="nav-icon">📝</span> Smart Summary
+                    </button>
+                    <button class="nav-btn" data-target="view-analytics">
+                        <span class="nav-icon">📊</span> Pipeline Analytics
+                    </button>
+                    <button class="nav-btn" data-target="view-ragas">
+                        <span class="nav-icon">🎯</span> RAGAS Metrics
+                    </button>
+                </div>
 
-            <div class="sidebar-footer">
-                <div class="session-manager">
+                <div class="nav-section flex-1 session-manager">
                     <div class="nav-title">SESSIONS</div>
                     <div class="session-list" id="sessionList">
                         <!-- Javascript populated sessions -->
                         <div class="session-item">Default Session</div>
                     </div>
-                    <button class="btn-primary-outline w-full" id="newSessionBtn">+ New Session</button>
                 </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="btn-primary-outline w-full" id="newSessionBtn">+ New Session</button>
             </div>
         </aside>
 

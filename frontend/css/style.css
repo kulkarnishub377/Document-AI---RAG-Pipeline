@@ -117,9 +117,12 @@ button, input, textarea, select { font-family: inherit; }
 
 /* Sidebar */
 .sidebar {
-    width: var(--sidebar-width); display: flex; flex-direction: column; overflow: hidden; z-index: 10;
+    width: var(--sidebar-width); display: flex; flex-direction: column; overflow: hidden; z-index: 10; flex-shrink: 0; height: 100%; min-height: 0;
 }
-.sidebar-header { padding: 24px; }
+.sidebar-header { padding: 24px; flex-shrink: 0; }
+.sidebar-body { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; min-height: 0; }
+.sidebar-body::-webkit-scrollbar { width: 4px; }
+.sidebar-body::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 .logo { display: flex; align-items: center; gap: 12px; }
 .logo-svg { width: 32px; height: 32px; color: var(--accent-primary); }
 .logo-text { font-family: var(--font-primary); font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
@@ -140,9 +143,12 @@ button, input, textarea, select { font-family: inherit; }
     color: var(--text-primary); box-shadow: 0 0 20px rgba(var(--accent-primary-rgb), 0.1);
 }
 
-.sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--glass-border); }
-.session-list { max-height: 150px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-.session-item { padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-section.flex-1 { flex: 1; margin-top: 8px; display: flex; flex-direction: column; min-height: 0; }
+.sidebar-footer { flex-shrink: 0; padding: 16px; border-top: 1px solid var(--glass-border); background: var(--glass-bg); }
+.session-list { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; min-height: 0; }
+.session-list::-webkit-scrollbar { width: 4px; }
+.session-list::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 4px; }
+.session-item { padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .session-item:hover { background: var(--element-hover); color: var(--text-primary); }
 
 /* Main Content Area */

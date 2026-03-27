@@ -72,3 +72,7 @@ huggingface/
 .gemini/
 .agent/
 .agents/
+data/sessions.db
+data/knowledge_graph.json
+data/
+data/sessions.db

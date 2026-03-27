@@ -311,6 +311,422 @@
         "MechanicDiesel 1st Year Hindi[1].pdf"
       ],
       "mentions": 4
+    },
+    {
+      "name": "kulkarnishub377@gmail.com",
+      "entity_type": "EMAIL",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "8308003684",
+      "entity_type": "PHONE",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Contact Shubham Kulkarni\nPune",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Software Engineer",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Computer Vision",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Deploying Production",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Pune District",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Summary\nSoftware Engineer",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Artificial Intelligence",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 3
+    },
+    {
+      "name": "Computer\nTop Skills\nVision",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Augmented Generation",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "At Arya Omnitalk Wireless Solutions",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Vehicle\nLanguages Identification",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Detection System",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Limited Working",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Full Professional",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 4
+    },
+    {
+      "name": "Certifications What",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Statistics Onramp\nAdvanced Excel",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Industrial Electronics",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "What Is Business Analysis",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Career Essentials",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "System Integration",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Smart India\nHackathon",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Experience\nArya Omnitalk\nSoftware Engineer\nAugust",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Contact\nPune",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Top Skills\nRetrieval",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Languages\nEnglish",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Vehicle Identification",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Advanced\nTraffic Management System",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Key Contributions",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Tech Stack",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Scale Deployment",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "End Integration",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Continuous Optimization",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Nvidia Jetson",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Nvidia Xavier",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Machine Learning",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "All India Council",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Technical Education",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Data Analytics\nOctober",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Tech\nProgram",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Vodafone Idea Foundation",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Campus Ambassador\nAugust",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Campus Mantri",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Vitthalrav Vikhe\nPatil College",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Artificial Intelligence Intern\nMay",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Artificial Intelligence Intern\nJune",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Emerging Technologies",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Education\nSavitribai Phule Pune University\nBachelor",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Residential Arts",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Science Junior College",
+      "entity_type": "ENTITY",
+      "sources": [
+        "Profile (1).pdf"
+      ],
+      "mentions": 1
     }
   ],
   "relationships": [
@@ -717,6 +1133,1446 @@
       "weight": 4,
       "source_docs": [
         "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "8308003684",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Contact Shubham Kulkarni\nPune",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Software Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Computer Vision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Deploying Production",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Pune District",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Summary\nSoftware Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Contact Shubham Kulkarni\nPune",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Software Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Computer Vision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Deploying Production",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Pune District",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Summary\nSoftware Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Software Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Computer Vision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Deploying Production",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Pune District",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Summary\nSoftware Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact Shubham Kulkarni\nPune",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Software Engineer",
+      "target_entity": "Computer Vision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Software Engineer",
+      "target_entity": "Deploying Production",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Software Engineer",
+      "target_entity": "Pune District",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Software Engineer",
+      "target_entity": "Summary\nSoftware Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Software Engineer",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Software Engineer",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Software Engineer",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Deploying Production",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Pune District",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Summary\nSoftware Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Deploying Production",
+      "target_entity": "Pune District",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Deploying Production",
+      "target_entity": "Summary\nSoftware Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Deploying Production",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Deploying Production",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Deploying Production",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Pune District",
+      "target_entity": "Summary\nSoftware Engineer",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Pune District",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Pune District",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Pune District",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Summary\nSoftware Engineer",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Summary\nSoftware Engineer",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Summary\nSoftware Engineer",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Artificial Intelligence",
+      "target_entity": "Computer\nTop Skills\nVision",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Artificial Intelligence",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer\nTop Skills\nVision",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "At Arya Omnitalk Wireless Solutions",
+      "target_entity": "Vehicle\nLanguages Identification",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "At Arya Omnitalk Wireless Solutions",
+      "target_entity": "Detection System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "At Arya Omnitalk Wireless Solutions",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "At Arya Omnitalk Wireless Solutions",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Vehicle\nLanguages Identification",
+      "target_entity": "Detection System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Vehicle\nLanguages Identification",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Vehicle\nLanguages Identification",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Detection System",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Detection System",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Limited Working",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Certifications What",
+      "target_entity": "Statistics Onramp\nAdvanced Excel",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Certifications What",
+      "target_entity": "Industrial Electronics",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Statistics Onramp\nAdvanced Excel",
+      "target_entity": "Industrial Electronics",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "What Is Business Analysis",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "What Is Business Analysis",
+      "target_entity": "System Integration",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Career Essentials",
+      "target_entity": "System Integration",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Smart India\nHackathon",
+      "target_entity": "Experience\nArya Omnitalk\nSoftware Engineer\nAugust",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Contact\nPune",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Top Skills\nRetrieval",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Languages\nEnglish",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "kulkarnishub377@gmail.com",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Contact\nPune",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Top Skills\nRetrieval",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Languages\nEnglish",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "8308003684",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact\nPune",
+      "target_entity": "Top Skills\nRetrieval",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact\nPune",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact\nPune",
+      "target_entity": "Languages\nEnglish",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact\nPune",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact\nPune",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact\nPune",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Contact\nPune",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Top Skills\nRetrieval",
+      "target_entity": "Augmented Generation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Top Skills\nRetrieval",
+      "target_entity": "Languages\nEnglish",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Top Skills\nRetrieval",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Top Skills\nRetrieval",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Top Skills\nRetrieval",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Top Skills\nRetrieval",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Augmented Generation",
+      "target_entity": "Languages\nEnglish",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Augmented Generation",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Augmented Generation",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Augmented Generation",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Augmented Generation",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Languages\nEnglish",
+      "target_entity": "Limited Working",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Languages\nEnglish",
+      "target_entity": "Full Professional",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Languages\nEnglish",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Languages\nEnglish",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Limited Working",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Limited Working",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Full Professional",
+      "target_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Full Professional",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Certifications\nStatistics Onramp\nAdvanced Excel\nIndustrial Electronics\nWhat Is Business Analysis",
+      "target_entity": "Career Essentials",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Artificial Intelligence",
+      "target_entity": "Vehicle Identification",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Artificial Intelligence",
+      "target_entity": "Detection System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Artificial Intelligence",
+      "target_entity": "Advanced\nTraffic Management System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Vehicle Identification",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Detection System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Computer Vision",
+      "target_entity": "Advanced\nTraffic Management System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Vehicle Identification",
+      "target_entity": "Detection System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Vehicle Identification",
+      "target_entity": "Advanced\nTraffic Management System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Detection System",
+      "target_entity": "Advanced\nTraffic Management System",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Key Contributions",
+      "target_entity": "Tech Stack",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Key Contributions",
+      "target_entity": "Scale Deployment",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Key Contributions",
+      "target_entity": "End Integration",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Key Contributions",
+      "target_entity": "Continuous Optimization",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Tech Stack",
+      "target_entity": "Scale Deployment",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Tech Stack",
+      "target_entity": "End Integration",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Tech Stack",
+      "target_entity": "Continuous Optimization",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Scale Deployment",
+      "target_entity": "End Integration",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Scale Deployment",
+      "target_entity": "Continuous Optimization",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "End Integration",
+      "target_entity": "Continuous Optimization",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Nvidia Jetson",
+      "target_entity": "Nvidia Xavier",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Nvidia Jetson",
+      "target_entity": "Tech Stack",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Nvidia Jetson",
+      "target_entity": "Machine Learning",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Nvidia Xavier",
+      "target_entity": "Tech Stack",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Nvidia Xavier",
+      "target_entity": "Machine Learning",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Tech Stack",
+      "target_entity": "Machine Learning",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "All India Council",
+      "target_entity": "Technical Education",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "All India Council",
+      "target_entity": "Data Analytics\nOctober",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "All India Council",
+      "target_entity": "Tech\nProgram",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "All India Council",
+      "target_entity": "Vodafone Idea Foundation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "All India Council",
+      "target_entity": "Campus Ambassador\nAugust",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Technical Education",
+      "target_entity": "Data Analytics\nOctober",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Technical Education",
+      "target_entity": "Tech\nProgram",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Technical Education",
+      "target_entity": "Vodafone Idea Foundation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Technical Education",
+      "target_entity": "Campus Ambassador\nAugust",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Data Analytics\nOctober",
+      "target_entity": "Tech\nProgram",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Data Analytics\nOctober",
+      "target_entity": "Vodafone Idea Foundation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Data Analytics\nOctober",
+      "target_entity": "Campus Ambassador\nAugust",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Tech\nProgram",
+      "target_entity": "Vodafone Idea Foundation",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Tech\nProgram",
+      "target_entity": "Campus Ambassador\nAugust",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Vodafone Idea Foundation",
+      "target_entity": "Campus Ambassador\nAugust",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Campus Mantri",
+      "target_entity": "Vitthalrav Vikhe\nPatil College",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Artificial Intelligence Intern\nJune",
+      "target_entity": "Emerging Technologies",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Artificial Intelligence Intern\nJune",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Emerging Technologies",
+      "target_entity": "Artificial Intelligence",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Education\nSavitribai Phule Pune University\nBachelor",
+      "target_entity": "Residential Arts",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Education\nSavitribai Phule Pune University\nBachelor",
+      "target_entity": "Science Junior College",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
+      ]
+    },
+    {
+      "source_entity": "Residential Arts",
+      "target_entity": "Science Junior College",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "Profile (1).pdf"
       ]
     }
   ]
