@@ -1,8 +1,8 @@
 # pipeline.py
 # ─────────────────────────────────────────────────────────────────────────────
-# Pipeline Orchestrator
+# Pipeline Orchestrator — v3.0
 #
-# This is the single entry point that wires all 5 stages together.
+# This is the single entry point that wires all stages together.
 #
 #   Stage 1 → load_document()       ingestion/document_loader.py
 #   Stage 2 → chunk_pages()         chunking/semantic_chunker.py
@@ -13,6 +13,13 @@
 #             summarize()
 #             extract_fields()
 #             table_qa()            llm/prompt_chains.py
+#
+# v3.0 additions:
+#   - Query caching (LRU with TTL)
+#   - Knowledge graph extraction
+#   - Document comparison
+#   - Source-filtered queries
+#   - Integrated chat history for sync Q&A
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -41,7 +48,12 @@ from llm.prompt_chains import (
     table_qa,
 )
 from retrieval.reranker import rerank
-from config import RETRIEVAL_TOP_K, RERANKER_TOP_K, UPLOAD_DIR
+from config import (
+    RETRIEVAL_TOP_K, RERANKER_TOP_K, UPLOAD_DIR, ALLOWED_EXTENSIONS,
+    KNOWLEDGE_GRAPH_ENABLED,
+)
+from utils.cache import query_cache
+from utils.exceptions import DocumentNotFoundError
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -91,10 +103,10 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
     """
     Full ingestion pipeline for a single document.
 
-    Steps:  load → OCR if needed → chunk → embed → index → save to disk
+    Steps:  load → OCR if needed → chunk → embed → index → knowledge graph → save
 
     Args:
-        file_path:     path to PDF / image / DOCX / TXT
+        file_path:     path to PDF / image / DOCX / Excel / PPTX / TXT
         force_rebuild: if True, rebuild the entire FAISS index from scratch
 
     Returns:
@@ -104,6 +116,7 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
           "chunks":     int,
           "index_size": int,
           "time_seconds": float,
+          "knowledge_graph": dict,  # v3.0
         }
     """
     path = Path(file_path)
@@ -128,6 +141,19 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
     # Stage 3 — Embed + Index
     index_chunks(chunks, force_rebuild=force_rebuild)
     stats = get_index_stats()
+
+    # v3.0 — Knowledge Graph Extraction
+    kg_result = {}
+    if KNOWLEDGE_GRAPH_ENABLED:
+        try:
+            from features.knowledge_graph import knowledge_graph
+            kg_result = knowledge_graph.process_chunks(chunks, path.name)
+        except Exception as e:
+            logger.warning(f"Knowledge graph extraction failed: {e}")
+
+    # Invalidate cache after ingestion
+    query_cache.invalidate()
+
     elapsed = round(time.perf_counter() - t0, 2)
 
     logger.info(f"═══ INGESTION DONE: {path.name}  "
@@ -136,11 +162,12 @@ def ingest(file_path: str | Path, force_rebuild: bool = False) -> Dict[str, Any]
                 f"| time={elapsed}s ═══")
 
     return {
-        "file":         path.name,
-        "pages":        len(pages),
-        "chunks":       len(chunks),
-        "index_size":   stats["total_vectors"],
-        "time_seconds": elapsed,
+        "file":            path.name,
+        "pages":           len(pages),
+        "chunks":          len(chunks),
+        "index_size":      stats["total_vectors"],
+        "time_seconds":    elapsed,
+        "knowledge_graph": kg_result,
     }
 
 
@@ -161,6 +188,16 @@ def ingest_url(url: str) -> Dict[str, Any]:
     index_chunks(chunks)
     stats = get_index_stats()
     elapsed = round(time.perf_counter() - t0, 2)
+
+    # Knowledge Graph
+    if KNOWLEDGE_GRAPH_ENABLED:
+        try:
+            from features.knowledge_graph import knowledge_graph
+            knowledge_graph.process_chunks(chunks, source_name)
+        except Exception:
+            pass
+
+    query_cache.invalidate()
     
     return {
         "file": source_name,
@@ -179,8 +216,7 @@ def ingest_folder(folder: str | Path) -> List[Dict[str, Any]]:
         results = ingest_folder("data/uploads/")
     """
     folder  = Path(folder)
-    allowed = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".docx", ".txt", ".md"}
-    files   = sorted(f for f in folder.iterdir() if f.suffix.lower() in allowed)
+    files   = sorted(f for f in folder.iterdir() if f.suffix.lower() in ALLOWED_EXTENSIONS)
 
     if not files:
         logger.warning(f"No supported files found in {folder}")
@@ -202,26 +238,53 @@ def ingest_folder(folder: str | Path) -> List[Dict[str, Any]]:
 # QUERY  (run for every user question)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_relevant_chunks(query: str) -> list:
+def get_relevant_chunks(
+    query: str,
+    source_filter: Optional[str] = None,
+) -> list:
     """Shared retrieval step: FAISS search → rerank → return top chunks."""
     candidates = similarity_search(query, top_k=RETRIEVAL_TOP_K)
     if not candidates:
         return []
+
+    # v3.0 — Source filter: restrict to a specific document
+    if source_filter:
+        candidates = [c for c in candidates if c.source == source_filter]
+        if not candidates:
+            return []
+
     return rerank(query, candidates, top_k=RERANKER_TOP_K)
 
 
-def query(question: str) -> Dict[str, Any]:
+def query(
+    question: str,
+    source_filter: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, Any]:
     """
     Answer a natural language question over all indexed documents.
+    v3.0: supports source filtering and chat history for sync mode.
 
     Usage:
         result = query("What is the total amount on the invoice?")
         print(result["answer"])
         print(result["sources"])
     """
-    logger.info(f"QUERY: '{question}'")
-    results = get_relevant_chunks(question)
-    return answer_question(question, results)
+    logger.info(f"QUERY: '{question}'" + (f" [source={source_filter}]" if source_filter else ""))
+
+    # Check cache first
+    cached = query_cache.get(question, mode="qa")
+    if cached:
+        logger.info("Query cache HIT — returning cached result")
+        return cached
+
+    results = get_relevant_chunks(question, source_filter=source_filter)
+    answer = answer_question(question, results, history=history)
+
+    # Store in cache
+    query_cache.put(question, answer, mode="qa")
+
+    return answer
 
 
 def get_summary(topic: str = "the document") -> Dict[str, Any]:
@@ -233,8 +296,15 @@ def get_summary(topic: str = "the document") -> Dict[str, Any]:
         print(result["summary"])
     """
     logger.info(f"SUMMARY request: '{topic}'")
+
+    cached = query_cache.get(topic, mode="summary")
+    if cached:
+        return cached
+
     results = get_relevant_chunks(topic)
-    return summarize(results)
+    result = summarize(results)
+    query_cache.put(topic, result, mode="summary")
+    return result
 
 
 def extract(fields: List[str], context_query: str = "") -> Dict[str, Any]:
@@ -269,6 +339,38 @@ def query_table(question: str) -> Dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DOCUMENT COMPARISON (v3.0)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def compare_documents(
+    doc_a: str,
+    doc_b: str,
+    question: str = "",
+) -> Dict[str, Any]:
+    """
+    Compare two indexed documents.
+
+    Args:
+        doc_a: filename of first document
+        doc_b: filename of second document
+        question: optional specific comparison question
+    """
+    from features.comparator import compare_documents as _compare, get_document_chunks
+
+    chunks_a = get_document_chunks(doc_a, question)
+    chunks_b = get_document_chunks(doc_b, question)
+
+    if not chunks_a and not chunks_b:
+        return {"error": f"Neither '{doc_a}' nor '{doc_b}' found in index."}
+    if not chunks_a:
+        return {"error": f"Document '{doc_a}' not found in index."}
+    if not chunks_b:
+        return {"error": f"Document '{doc_b}' not found in index."}
+
+    return _compare(chunks_a, chunks_b, doc_a, doc_b, question)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # STATUS & MANAGEMENT
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -282,19 +384,22 @@ def status() -> Dict[str, Any]:
 def clear_index() -> Dict[str, str]:
     """Delete the entire FAISS index and start fresh."""
     reset_index()
+    query_cache.invalidate()
     return {"status": "index cleared successfully"}
 
 def delete_document(source: str) -> Dict[str, Any]:
     """Delete a single document from the index by its filename."""
     count = delete_source(source)
     if count == 0:
-        raise FileNotFoundError(f"Source '{source}' not found in index.")
+        raise DocumentNotFoundError(source)
     
     # Also delete the uploaded file if it exists
     upload_path = UPLOAD_DIR / source
     if upload_path.exists():
         upload_path.unlink()
         logger.info(f"Deleted uploaded file: {upload_path}")
+
+    query_cache.invalidate()
     
     return {"status": "success", "deleted_chunks": count, "source": source}
 
@@ -347,11 +452,15 @@ def get_analytics() -> Dict[str, Any]:
                 source_breakdown.append({"source": source, "chunks": count})
         except Exception:
             pass
+
+    # v3.0 — cache stats
+    cache_stats = query_cache.stats()
     
     return {
         **stats,
         "storage": storage,
         "source_breakdown": source_breakdown,
+        "cache": cache_stats,
         "ollama": "connected" if check_ollama_connection() else "not reachable",
     }
 
@@ -364,7 +473,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("\nDocument AI + RAG Pipeline")
+        print("\nDocument AI + RAG Pipeline v3.0")
         print("=" * 40)
         print("\nUsage:")
         print("  python pipeline.py <path-to-document>     Ingest and start Q&A")
