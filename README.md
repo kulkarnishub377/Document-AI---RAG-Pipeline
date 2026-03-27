@@ -1,6 +1,6 @@
 # 📄 DocuAI Studio V3
 
-> Upload any document (PDF, image, Excel, PowerPoint, Word, CSV, text, or web URL) and ask questions in plain English.
+> Upload any document (PDF, image, DOCX, Excel, PowerPoint, CSV, text, or web URL) and ask questions in plain English.
 > Fully local, private, and powered by Mistral via Ollama.
 
 <!-- Status Badges -->
