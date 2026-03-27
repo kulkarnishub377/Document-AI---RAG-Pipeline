@@ -10,6 +10,7 @@ const STATE = {
     currentSessionId: null,
     isQuerying: false,
     documents: [],
+    sessions: [],
     activeFilter: null
 };
 
@@ -106,6 +107,14 @@ const escapeHtml = (text) => {
     return div.innerHTML;
 };
 
+function debounce(fn, delay = 120) {
+    let timer = null;
+    return (...args) => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
+}
+
 // -------------------------------------------------------------
 // Core API
 // -------------------------------------------------------------
@@ -182,29 +191,37 @@ async function refreshStatus() {
 // -------------------------------------------------------------
 async function loadSessions() {
     try {
-        const sessions = await apiCall('/sessions');
-        DOM.sessionList.innerHTML = '';
-        if (sessions.length === 0) {
+        STATE.sessions = await apiCall('/sessions');
+        if (STATE.sessions.length === 0) {
             await createNewSession();
             return;
         }
 
-        sessions.forEach(s => {
-            const div = document.createElement('div');
-            div.className = 'session-item';
-            div.textContent = s.title || `Session ${s.id.substring(0,6)}`;
-            div.onclick = () => switchSession(s.id);
-            if (s.id === STATE.currentSessionId) {
-                div.style.color = 'var(--accent-primary)';
-                div.style.fontWeight = '700';
-            }
-            DOM.sessionList.appendChild(div);
-        });
+        renderSessions();
 
         if (!STATE.currentSessionId) {
-            switchSession(sessions[0].id);
+            switchSession(STATE.sessions[0].id);
         }
     } catch {}
+}
+
+function renderSessions() {
+    DOM.sessionList.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+
+    STATE.sessions.forEach((s) => {
+        const div = document.createElement('div');
+        div.className = 'session-item';
+        div.textContent = s.title || `Session ${s.id.substring(0, 6)}`;
+        div.onclick = () => switchSession(s.id);
+        if (s.id === STATE.currentSessionId) {
+            div.style.color = 'var(--accent-primary)';
+            div.style.fontWeight = '700';
+        }
+        fragment.appendChild(div);
+    });
+
+    DOM.sessionList.appendChild(fragment);
 }
 
 async function createNewSession() {
@@ -225,7 +242,7 @@ async function createNewSession() {
 
 async function switchSession(id) {
     STATE.currentSessionId = id;
-    await loadSessions(); // re-render to higlight
+    renderSessions();
     // Load messages
     try {
         const msgs = await apiCall(`/sessions/${id}/messages`);
@@ -558,6 +575,8 @@ function renderDocumentRows() {
         return;
     }
 
+    const fragment = document.createDocumentFragment();
+
     docs.forEach(doc => {
         const tr = document.createElement('tr');
 
@@ -600,8 +619,10 @@ function renderDocumentRows() {
         tr.appendChild(sizeTd);
         tr.appendChild(dateTd);
         tr.appendChild(actionTd);
-        DOM.docTableBody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    DOM.docTableBody.appendChild(fragment);
 }
 
 function refreshSourceFilterOptions() {
@@ -629,7 +650,7 @@ function refreshSourceFilterOptions() {
 }
 
 if (DOM.documentSearchInput) {
-    DOM.documentSearchInput.addEventListener('input', renderDocumentRows);
+    DOM.documentSearchInput.addEventListener('input', debounce(renderDocumentRows, 140));
 }
 
 window.deleteDoc = async (filename) => {
