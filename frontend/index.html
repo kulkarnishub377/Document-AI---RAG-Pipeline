@@ -136,7 +136,14 @@
                             </div>
                             <div class="chat-footer-controls">
                                 <span class="stream-toggle active" id="streamToggle">⚡ Streaming <span>ON</span></span>
-                                <span class="doc-filter" id="activeDocFilter">All Documents</span>
+                                <div class="chat-controls-right">
+                                    <select id="sourceFilterSelect" class="mini-select" title="Filter answers to one document">
+                                        <option value="">All Documents</option>
+                                    </select>
+                                    <button class="mini-btn" id="resetFilterBtn" title="Clear source filter">Reset</button>
+                                    <button class="mini-btn" id="exportChatBtn" title="Export current chat">Export</button>
+                                    <button class="mini-btn" id="clearChatBtn" title="Start a fresh chat">New Chat</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -153,7 +160,7 @@
                                 <h3>Secure Document Upload</h3>
                                 <p>Drag & drop or click to browse files.</p>
                                 <p class="sub-text">Supports PDF, DOCX, XLSX, CSV, PPTX, Images</p>
-                                <input type="file" id="bulkFileInput" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.txt,.md">
+                                <input type="file" id="bulkFileInput" multiple hidden accept=".pdf,.docx,.xlsx,.csv,.pptx,.png,.jpg,.jpeg,.txt,.md">
                                 <button class="btn-primary mt-4" id="triggerFileBtn">Select Files</button>
                                 
                                 <div class="upload-progress-container" id="uploadProgressBox">
@@ -181,7 +188,10 @@
                         <div class="table-card glass-panel mt-6">
                             <div class="card-header-flex">
                                 <h3>Active Vector Index</h3>
-                                <button class="btn-danger-outline" id="clearIndexBtn">Clear Index</button>
+                                <div class="header-actions">
+                                    <input type="text" id="documentSearchInput" class="glass-input search-input" placeholder="Search files...">
+                                    <button class="btn-danger-outline" id="clearIndexBtn">Clear Index</button>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="glass-table">
@@ -348,8 +358,8 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>Active Engine Model</label>
-                    <input type="text" class="glass-input" value="Mistral 7B (Ollama)" readonly disabled>
+                    <label>Instance Controls</label>
+                    <input type="text" class="glass-input" value="Frontend controls and cache actions" readonly disabled>
                 </div>
                 <div class="form-group mt-4">
                     <label>Cache Matrix Control</label>

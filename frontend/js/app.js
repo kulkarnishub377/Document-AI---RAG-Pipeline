@@ -34,6 +34,10 @@ const DOM = {
     chatStream: getEl('chatStream'),
     emptyState: getEl('chatEmptyState'),
     streamToggle: getEl('streamToggle'),
+    sourceFilterSelect: getEl('sourceFilterSelect'),
+    resetFilterBtn: getEl('resetFilterBtn'),
+    exportChatBtn: getEl('exportChatBtn'),
+    clearChatBtn: getEl('clearChatBtn'),
 
     // Documents
     dropZone: getEl('dropZone'),
@@ -44,6 +48,7 @@ const DOM = {
     urlIngestInput: getEl('urlIngestInput'),
     ingestUrlBtn: getEl('ingestUrlBtn'),
     clearIndexBtn: getEl('clearIndexBtn'),
+    documentSearchInput: getEl('documentSearchInput'),
 
     // Compare
     compareSelectA: getEl('compareSelectA'),
@@ -68,7 +73,10 @@ const DOM = {
 
     // Sessions
     sessionList: getEl('sessionList'),
-    newSessionBtn: getEl('newSessionBtn')
+    newSessionBtn: getEl('newSessionBtn'),
+
+    // Modals
+    settingsModal: getEl('settingsModal')
 };
 
 function showToast(msg, type = 'info') {
@@ -238,6 +246,70 @@ DOM.streamToggle.addEventListener('click', () => {
     DOM.streamToggle.querySelector('span').textContent = STATE.isStreaming ? 'ON' : 'OFF';
 });
 
+if (DOM.sourceFilterSelect) {
+    DOM.sourceFilterSelect.addEventListener('change', (e) => {
+        const value = e.target.value || null;
+        STATE.activeFilter = value;
+        showToast(value ? `Source filter: ${value}` : 'Source filter cleared', 'info');
+    });
+}
+
+if (DOM.resetFilterBtn) {
+    DOM.resetFilterBtn.addEventListener('click', () => {
+        STATE.activeFilter = null;
+        if (DOM.sourceFilterSelect) DOM.sourceFilterSelect.value = '';
+        showToast('Source filter reset', 'success');
+    });
+}
+
+if (DOM.exportChatBtn) {
+    DOM.exportChatBtn.addEventListener('click', async () => {
+        if (!STATE.currentSessionId) {
+            showToast('No active session to export', 'error');
+            return;
+        }
+
+        try {
+            const msgs = await apiCall(`/sessions/${STATE.currentSessionId}/messages?limit=500`);
+            if (!msgs.length) {
+                showToast('No messages in this session', 'info');
+                return;
+            }
+
+            const lines = ['# DocuAI Chat Export', `Session: ${STATE.currentSessionId}`, ''];
+            msgs.forEach((m) => {
+                lines.push(`## ${m.role.toUpperCase()}`);
+                lines.push(m.content || '');
+                lines.push('');
+            });
+
+            const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `docuai-session-${STATE.currentSessionId.slice(0, 8)}.md`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showToast('Session exported', 'success');
+        } catch (e) {
+            showToast(`Export failed: ${e.message}`, 'error');
+        }
+    });
+}
+
+if (DOM.clearChatBtn) {
+    DOM.clearChatBtn.addEventListener('click', async () => {
+        await createNewSession();
+    });
+}
+
+DOM.queryInput.addEventListener('input', () => {
+    DOM.queryInput.style.height = 'auto';
+    DOM.queryInput.style.height = `${Math.min(DOM.queryInput.scrollHeight, 150)}px`;
+});
+
 function formatTime() {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -277,9 +349,24 @@ function appendChatBubble(role, content, sources = []) {
                 <span>${formatTime()}</span>
             </div>
             <div class="msg-bubble">${formattedContent}</div>
+            ${!isUser ? '<div class="msg-actions"><button class="msg-action-btn" type="button">Copy</button></div>' : ''}
             ${sourcesHtml}
         </div>
     `;
+
+    if (!isUser) {
+        const copyBtn = row.querySelector('.msg-action-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(content || '');
+                    showToast('Answer copied', 'success');
+                } catch (e) {
+                    showToast('Copy failed', 'error');
+                }
+            });
+        }
+    }
     
     DOM.chatStream.appendChild(row);
     DOM.chatStream.scrollTop = DOM.chatStream.scrollHeight;
@@ -441,25 +528,52 @@ async function loadDocuments() {
     try {
         const docs = await apiCall('/documents');
         STATE.documents = docs;
-        DOM.docTableBody.innerHTML = '';
-        if(docs.length === 0) {
-            DOM.docTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No documents inside the Data Lake</td></tr>`;
-            return;
-        }
-
-        docs.forEach(doc => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><a href="#" style="color:var(--accent-primary);text-decoration:none;font-weight:600;" onclick="openPreview('${escapeHtml(doc.filename)}')">${escapeHtml(doc.filename)}</a></td>
-                <td><span class="pill-btn">${escapeHtml(doc.suffix.toUpperCase().replace('.',''))}</span></td>
-                <td>${doc.size_mb} MB</td>
-                <td>${new Date(doc.modified || Date.now()).toLocaleDateString()}</td>
-                <td><button class="btn-danger-outline" onclick="deleteDoc('${escapeHtml(doc.filename)}')">Delete</button></td>
-            `;
-            DOM.docTableBody.appendChild(tr);
-        });
+        renderDocumentRows();
+        refreshSourceFilterOptions();
         
     } catch {}
+}
+
+function renderDocumentRows() {
+    const q = (DOM.documentSearchInput?.value || '').trim().toLowerCase();
+    DOM.docTableBody.innerHTML = '';
+
+    const docs = STATE.documents.filter((doc) => {
+        if (!q) return true;
+        return doc.filename.toLowerCase().includes(q) || (doc.suffix || '').toLowerCase().includes(q);
+    });
+
+    if (docs.length === 0) {
+        DOM.docTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No matching documents found.</td></tr>`;
+        return;
+    }
+
+    docs.forEach(doc => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><a href="#" style="color:var(--accent-primary);text-decoration:none;font-weight:600;" onclick="openPreview('${escapeHtml(doc.filename)}')">${escapeHtml(doc.filename)}</a></td>
+            <td><span class="pill-btn">${escapeHtml(doc.suffix.toUpperCase().replace('.',''))}</span></td>
+            <td>${doc.size_mb} MB</td>
+            <td>${new Date(doc.modified || Date.now()).toLocaleDateString()}</td>
+            <td><button class="btn-danger-outline" onclick="deleteDoc('${escapeHtml(doc.filename)}')">Delete</button></td>
+        `;
+        DOM.docTableBody.appendChild(tr);
+    });
+}
+
+function refreshSourceFilterOptions() {
+    if (!DOM.sourceFilterSelect) return;
+    const current = STATE.activeFilter || '';
+    const options = ['<option value="">All Documents</option>'];
+    STATE.documents.forEach((d) => {
+        options.push(`<option value="${escapeHtml(d.filename)}">${escapeHtml(d.filename)}</option>`);
+    });
+    DOM.sourceFilterSelect.innerHTML = options.join('');
+    DOM.sourceFilterSelect.value = current;
+}
+
+if (DOM.documentSearchInput) {
+    DOM.documentSearchInput.addEventListener('input', renderDocumentRows);
 }
 
 window.deleteDoc = async (filename) => {
