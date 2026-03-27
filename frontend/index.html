@@ -99,6 +99,8 @@
                         <span class="theme-icon dark-visible">☀️</span>
                         <span class="theme-icon light-visible">🌙</span>
                     </button>
+
+                    <button class="icon-btn" id="shortcutsBtn" title="Keyboard Shortcuts">⌨️</button>
                     
                     <button class="icon-btn" id="settingsBtn" title="System Settings">⚙️</button>
                 </div>
@@ -235,6 +237,7 @@
 
                             <div class="input-group mt-6">
                                 <input type="text" class="glass-input" id="compareQuestionInput" placeholder="Specify comparison focus (optional)...">
+                                <button class="btn-secondary" id="swapCompareBtn" title="Swap selected documents">Swap</button>
                                 <button class="btn-primary" id="runCompareBtn">Execute Analysis</button>
                             </div>
                         </div>
@@ -265,7 +268,10 @@
                         </div>
 
                         <div class="glass-panel mt-6 pd-6 result-panel" id="extractResultPanel">
-                            <h3>Extracted JSON Payload</h3>
+                            <div class="card-header-flex">
+                                <h3>Extracted JSON Payload</h3>
+                                <button class="btn-secondary" id="copyExtractBtn">Copy</button>
+                            </div>
                             <pre class="json-viewer" id="extractResultContent">// Output</pre>
                         </div>
                     </div>
@@ -285,7 +291,10 @@
                         </div>
 
                         <div class="glass-panel mt-6 pd-6 result-panel" id="summaryResultPanel">
-                            <h3>Summary Profile</h3>
+                            <div class="card-header-flex">
+                                <h3>Summary Profile</h3>
+                                <button class="btn-secondary" id="copySummaryBtn">Copy</button>
+                            </div>
                             <div class="markdown-body" id="summaryResultContent">
                                 <div class="text-muted">Awaiting execution...</div>
                             </div>
@@ -396,6 +405,23 @@
                     <h4>Preview Not Available</h4>
                     <p class="text-muted mt-2">This file type cannot be previewed natively in the browser. You can download it to view it locally.</p>
                     <a id="previewDownloadBtn" class="btn-primary mt-4" style="display: inline-block; text-decoration: none;" download>Download File</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="shortcutsModal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="close-modal-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcut-grid">
+                    <div class="shortcut-row"><span>Focus query box</span><kbd>Ctrl/Cmd + K</kbd></div>
+                    <div class="shortcut-row"><span>Send message</span><kbd>Ctrl/Cmd + Enter</kbd></div>
+                    <div class="shortcut-row"><span>Close open modal</span><kbd>Esc</kbd></div>
+                    <div class="shortcut-row"><span>Toggle streaming</span><kbd>Alt + S</kbd></div>
                 </div>
             </div>
         </div>
