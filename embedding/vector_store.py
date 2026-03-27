@@ -361,6 +361,8 @@ def reset_index() -> None:
 def delete_source(source_name: str) -> int:
     """
     Remove all chunks belonging to a specific source document.
+    Rebuilds the FAISS index excluding deleted vectors (IndexFlatIP
+    does not support remove_ids, so we must reconstruct).
     Returns the number of chunks deleted.
     """
     global _faiss_index, _metadata, _bm25_index
@@ -368,7 +370,6 @@ def delete_source(source_name: str) -> int:
     with _lock:
         if _faiss_index is None:
             if FAISS_INDEX_PATH.exists():
-                # Load directly without calling load_index() to avoid RLock re-entry
                 _faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
                 with open(METADATA_PATH, "r", encoding="utf-8") as f:
                     _metadata = {int(k): v for k, v in json.load(f).items()}
@@ -376,20 +377,35 @@ def delete_source(source_name: str) -> int:
                 return 0
 
         # Find which indices belong to the source
-        ids_to_remove = [k for k, v in _metadata.items() if v["source"] == source_name]
+        ids_to_remove = set(k for k, v in _metadata.items() if v["source"] == source_name)
         if not ids_to_remove:
             return 0
 
-        # FIX: Convert to numpy int64 array for IDSelectorBatch
-        ids_array = np.array(ids_to_remove, dtype=np.int64)
-        sel = faiss.IDSelectorBatch(ids_array)
-        _faiss_index.remove_ids(sel)
+        # Rebuild index from remaining vectors
+        keep_items = [(k, v) for k, v in sorted(_metadata.items()) if k not in ids_to_remove]
 
-        # Rebuild metadata dictionary sequentially to match new vector IDs
-        keep_items = [v for k, v in sorted(_metadata.items()) if k not in ids_to_remove]
-        _metadata.clear()
-        for i, v in enumerate(keep_items):
-            _metadata[i] = v
+        if keep_items:
+            # Reconstruct embeddings from the existing FAISS index
+            keep_ids = [k for k, _ in keep_items]
+            keep_vectors = np.vstack([
+                _faiss_index.reconstruct(int(idx)).reshape(1, -1)
+                for idx in keep_ids
+            ])
+
+            # Build new index
+            new_index = faiss.IndexFlatIP(keep_vectors.shape[1])
+            new_index.add(keep_vectors.astype("float32"))
+            _faiss_index = new_index
+
+            # Rebuild metadata with sequential keys
+            new_metadata = {}
+            for i, (_, v) in enumerate(keep_items):
+                new_metadata[i] = v
+            _metadata = new_metadata
+        else:
+            # No vectors left — create empty index
+            _faiss_index = faiss.IndexFlatIP(EMBED_DIMENSION)
+            _metadata = {}
 
         # Persist updated index and metadata
         faiss.write_index(_faiss_index, str(FAISS_INDEX_PATH))
@@ -399,8 +415,9 @@ def delete_source(source_name: str) -> int:
         # Invalidate BM25 index
         _bm25_index = None
 
-        logger.info(f"Deleted {len(ids_to_remove)} chunks for source: {source_name}")
-        return len(ids_to_remove)
+        deleted_count = len(ids_to_remove)
+        logger.info(f"Deleted {deleted_count} chunks for source: {source_name} (index rebuilt)")
+        return deleted_count
 
 
 def get_index_stats() -> dict:
