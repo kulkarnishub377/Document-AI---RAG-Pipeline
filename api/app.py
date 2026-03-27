@@ -424,7 +424,10 @@ async def summarize_endpoint(req: SummarizeRequest):
 async def extract_endpoint(req: ExtractRequest):
     if not check_ollama_connection():
         raise OllamaNotReachableError("configured URL")
-    return pipeline.extract(req.fields, req.context_query)
+    result = pipeline.extract(req.fields, req.context_query)
+    if "fields" in result and "extracted_data" not in result:
+        result["extracted_data"] = result["fields"]
+    return result
 
 
 @app.post("/table-query", tags=["Query"], summary="Ask about tables in documents")

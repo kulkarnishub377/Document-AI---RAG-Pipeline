@@ -70,6 +70,13 @@ def test_ingest_unsupported_file():
     assert "Unsupported" in resp.json()["detail"]
 
 
+def test_ingest_rejects_path_traversal_filename():
+    """Test that filenames cannot escape the uploads directory."""
+    file = io.BytesIO(b"This is a harmless test document.")
+    resp = client.post("/ingest", files={"file": ("../escape.txt", file, "text/plain")})
+    assert resp.status_code == 400
+
+
 def test_ingest_success():
     """Test successful document ingestion."""
     with patch("pipeline.ingest") as mock_ingest:
@@ -172,6 +179,7 @@ def test_extract_endpoint():
         data = resp.json()
         assert "fields" in data
         assert data["fields"]["invoice_number"] == "INV-001"
+        assert "extracted_data" in data
 
 
 def test_table_query_endpoint():
@@ -186,6 +194,26 @@ def test_table_query_endpoint():
         resp = client.post("/table-query", json={"question": "What is in row 3?"})
         assert resp.status_code == 200
         assert "answer" in resp.json()
+
+
+def test_compare_endpoint_exposes_analysis_alias():
+    """Test that compare responses expose both analysis and compatibility aliases."""
+    with patch("llm.prompt_chains.check_ollama_connection", return_value=True), \
+         patch("pipeline.compare_documents") as mock_compare:
+        mock_compare.return_value = {
+            "analysis": "Documents differ in one clause.",
+            "doc_a": "a.pdf",
+            "doc_b": "b.pdf",
+        }
+
+        resp = client.post(
+            "/compare",
+            json={"doc_a": "a.pdf", "doc_b": "b.pdf", "question": "What changed?"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["analysis"] == "Documents differ in one clause."
+        assert data["comparison"] == "Documents differ in one clause."
 
 
 def test_clear_endpoint():
