@@ -539,6 +539,7 @@ async function loadDocuments() {
         STATE.documents = docs;
         renderDocumentRows();
         refreshSourceFilterOptions();
+        renderCompareDropdowns();
         
     } catch {}
 }
@@ -652,26 +653,37 @@ DOM.clearIndexBtn.addEventListener('click', async () => {
 });
 
 // File Upload Handlers
-DOM.triggerFileBtn.addEventListener('click', () => DOM.bulkInput.click());
-getEl('quickUploadBtn').addEventListener('click', () => {
-    document.querySelector('[data-target="view-documents"]').click();
-});
+if (DOM.triggerFileBtn && DOM.bulkInput) {
+    DOM.triggerFileBtn.addEventListener('click', () => DOM.bulkInput.click());
+}
 
-DOM.bulkInput.addEventListener('change', async (e) => {
-    if (e.target.files.length > 0) handleFiles(e.target.files);
-    e.target.value = '';
-});
+const quickUploadBtn = getEl('quickUploadBtn');
+if (quickUploadBtn) {
+    quickUploadBtn.addEventListener('click', () => {
+        const docsNav = document.querySelector('[data-target="view-documents"]');
+        if (docsNav) docsNav.click();
+    });
+}
 
-DOM.dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    DOM.dropZone.classList.add('dragover');
-});
-DOM.dropZone.addEventListener('dragleave', () => DOM.dropZone.classList.remove('dragover'));
-DOM.dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    DOM.dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
-});
+if (DOM.bulkInput) {
+    DOM.bulkInput.addEventListener('change', async (e) => {
+        if (e.target.files.length > 0) handleFiles(e.target.files);
+        e.target.value = '';
+    });
+}
+
+if (DOM.dropZone) {
+    DOM.dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        DOM.dropZone.classList.add('dragover');
+    });
+    DOM.dropZone.addEventListener('dragleave', () => DOM.dropZone.classList.remove('dragover'));
+    DOM.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        DOM.dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+    });
+}
 
 async function handleFiles(files) {
     DOM.uploadProgressBox.style.display = 'block';
@@ -990,6 +1002,14 @@ document.addEventListener('keydown', (e) => {
             modal.classList.remove('active');
         });
     }
+});
+
+document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.classList.remove('active');
+        }
+    });
 });
 
 
