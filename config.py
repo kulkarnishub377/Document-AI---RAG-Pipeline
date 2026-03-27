@@ -2,6 +2,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Every configurable value lives here. Change settings in this file or
 # override them with environment variables / a .env file.
+# v3.0 — Added: caching, rate limiting, SQLite sessions, knowledge graph,
+#         WebSocket, PDF annotation, document comparison, API versioning,
+#         Excel/CSV/PPTX support
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -58,12 +61,18 @@ CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "64"))
 RETRIEVAL_TOP_K = int(os.getenv("RETRIEVAL_TOP_K", "20"))
 
 # ── API ───────────────────────────────────────────────────────────────────────
-API_HOST = os.getenv("API_HOST", "0.0.0.0")
-API_PORT = int(os.getenv("API_PORT", "8000"))
+API_HOST    = os.getenv("API_HOST", "0.0.0.0")
+API_PORT    = int(os.getenv("API_PORT", "8000"))
+API_VERSION = os.getenv("API_VERSION", "v1")
 
 # ── File Upload Limits ────────────────────────────────────────────────────────
 MAX_FILE_SIZE_MB   = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
-ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp", ".docx", ".doc"}
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp",
+    ".docx", ".doc", ".txt", ".md",
+    ".xlsx", ".xls", ".csv",      # Spreadsheets (v3.0)
+    ".pptx",                       # Presentations (v3.0)
+}
 
 # ── GPU Acceleration ──────────────────────────────────────────────────────────
 ENABLE_GPU = os.getenv("ENABLE_GPU", "auto").lower()  # "auto" | "true" | "false"
@@ -76,22 +85,57 @@ MULTILINGUAL_EMBED_MODEL = os.getenv(
 )
 MULTILINGUAL_EMBED_DIMENSION = int(os.getenv("MULTILINGUAL_EMBED_DIMENSION", "384"))
 
+# ── Query Caching (v3.0) ─────────────────────────────────────────────────────
+CACHE_ENABLED    = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+CACHE_MAX_SIZE   = int(os.getenv("CACHE_MAX_SIZE", "128"))
+CACHE_TTL_SECS   = int(os.getenv("CACHE_TTL_SECS", "3600"))  # 1 hour
+
+# ── Rate Limiting (v3.0) ─────────────────────────────────────────────────────
+RATE_LIMIT_ENABLED   = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+RATE_LIMIT_REQUESTS  = int(os.getenv("RATE_LIMIT_REQUESTS", "60"))   # per window
+RATE_LIMIT_WINDOW    = int(os.getenv("RATE_LIMIT_WINDOW", "60"))     # seconds
+
+# ── SQLite Sessions (v3.0) ───────────────────────────────────────────────────
+SQLITE_DB_PATH = DATA_DIR / os.getenv("SQLITE_DB_NAME", "sessions.db")
+
+# ── Knowledge Graph (v3.0) ───────────────────────────────────────────────────
+KNOWLEDGE_GRAPH_ENABLED = os.getenv("KNOWLEDGE_GRAPH_ENABLED", "true").lower() == "true"
+KG_DATA_PATH = DATA_DIR / "knowledge_graph.json"
+
+# ── WebSocket Collaboration (v3.0) ───────────────────────────────────────────
+WS_ENABLED = os.getenv("WS_ENABLED", "true").lower() == "true"
+
+# ── PDF Annotation (v3.0) ────────────────────────────────────────────────────
+ANNOTATED_PDF_DIR = DATA_DIR / "annotated"
+ANNOTATED_PDF_DIR.mkdir(parents=True, exist_ok=True)
+
 # ── Logging ───────────────────────────────────────────────────────────────────
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_LEVEL  = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT = os.getenv("LOG_FORMAT", "text")  # "text" | "json"
 
 # Remove default loguru handler and add a custom one
 logger.remove()
-logger.add(
-    sys.stderr,
-    level=LOG_LEVEL,
-    format=(
-        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> — "
-        "<level>{message}</level>"
-    ),
-    colorize=True,
-)
+
+if LOG_FORMAT == "json":
+    logger.add(
+        sys.stderr,
+        level=LOG_LEVEL,
+        format="{message}",
+        serialize=True,
+    )
+else:
+    logger.add(
+        sys.stderr,
+        level=LOG_LEVEL,
+        format=(
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> — "
+            "<level>{message}</level>"
+        ),
+        colorize=True,
+    )
+
 logger.add(
     DATA_DIR / "pipeline.log",
     level="DEBUG",
@@ -101,4 +145,4 @@ logger.add(
 )
 
 # ── Version ───────────────────────────────────────────────────────────────────
-__version__ = "2.0.0"
+__version__ = "3.0.0"
