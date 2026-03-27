@@ -263,6 +263,114 @@ def _parse_text(path: Path) -> List[PageData]:
     )]
 
 
+# ── Parser: Excel / CSV ──────────────────────────────────────────────────────
+
+def _parse_excel(path: Path) -> List[PageData]:
+    """Extract data from Excel (.xlsx/.xls) files."""
+    try:
+        import openpyxl
+    except ImportError:
+        raise ImportError("Excel parsing requires 'openpyxl'. Run: pip install openpyxl")
+
+    wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+    pages: List[PageData] = []
+
+    for sheet_idx, sheet_name in enumerate(wb.sheetnames, start=1):
+        ws = wb[sheet_name]
+        rows = []
+        tables = []
+        table_rows = []
+
+        for row in ws.iter_rows(values_only=True):
+            str_row = [str(cell) if cell is not None else "" for cell in row]
+            if any(c.strip() for c in str_row):
+                rows.append(" | ".join(str_row))
+                table_rows.append(str_row)
+
+        if table_rows:
+            tables.append(table_rows)
+
+        text = f"Sheet: {sheet_name}\n" + "\n".join(rows)
+        lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
+        pages.append(PageData(
+            source=path.name, page_num=sheet_idx,
+            text=text, tables=tables, method="excel",
+            language=lang,
+        ))
+
+    wb.close()
+    logger.debug(f"Excel parsed: {len(pages)} sheets from {path.name}")
+    return pages
+
+
+def _parse_csv(path: Path) -> List[PageData]:
+    """Extract data from CSV files."""
+    import csv
+
+    rows = []
+    table_rows = []
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            str_row = [str(cell).strip() for cell in row]
+            if any(c for c in str_row):
+                rows.append(" | ".join(str_row))
+                table_rows.append(str_row)
+
+    text = "\n".join(rows)
+    tables = [table_rows] if table_rows else []
+    lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
+
+    return [PageData(
+        source=path.name, page_num=1,
+        text=text, tables=tables, method="csv",
+        language=lang,
+    )]
+
+
+# ── Parser: PowerPoint (.pptx) ───────────────────────────────────────────────
+
+def _parse_pptx(path: Path) -> List[PageData]:
+    """Extract text from PowerPoint presentations."""
+    try:
+        from pptx import Presentation
+    except ImportError:
+        raise ImportError("PPTX parsing requires 'python-pptx'. Run: pip install python-pptx")
+
+    prs = Presentation(str(path))
+    pages: List[PageData] = []
+
+    for slide_num, slide in enumerate(prs.slides, start=1):
+        texts = []
+        tables_data = []
+
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for paragraph in shape.text_frame.paragraphs:
+                    para_text = paragraph.text.strip()
+                    if para_text:
+                        texts.append(para_text)
+
+            if shape.has_table:
+                table = shape.table
+                table_rows = []
+                for row in table.rows:
+                    table_rows.append([cell.text.strip() for cell in row.cells])
+                if table_rows:
+                    tables_data.append(table_rows)
+
+        text = "\n".join(texts)
+        lang = _detect_language(text) if MULTILINGUAL_MODE else "en"
+        pages.append(PageData(
+            source=path.name, page_num=slide_num,
+            text=text, tables=tables_data, method="pptx",
+            language=lang,
+        ))
+
+    logger.debug(f"PPTX parsed: {len(pages)} slides from {path.name}")
+    return pages
+
+
 # ── Parser: Web URL ──────────────────────────────────────────────────────────
 
 def parse_url(url: str) -> List[PageData]:
@@ -366,6 +474,18 @@ def load_document(path: str | Path) -> List[PageData]:
     elif suffix in {".txt", ".md"}:
         logger.info("→ Text file, reading directly")
         pages = _parse_text(path)
+
+    elif suffix in {".xlsx", ".xls"}:
+        logger.info("→ Excel file, using openpyxl parser")
+        pages = _parse_excel(path)
+
+    elif suffix == ".csv":
+        logger.info("→ CSV file, using csv parser")
+        pages = _parse_csv(path)
+
+    elif suffix == ".pptx":
+        logger.info("→ PowerPoint file, using python-pptx parser")
+        pages = _parse_pptx(path)
 
     else:
         raise ValueError(
