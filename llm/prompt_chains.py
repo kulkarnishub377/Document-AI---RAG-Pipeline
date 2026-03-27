@@ -171,18 +171,25 @@ ANSWER:"""
     yield "data: [DONE]\n\n"
 
 
-def answer_question(query: str, results: List[SearchResult]) -> Dict[str, Any]:
+def answer_question(
+    query: str,
+    results: List[SearchResult],
+    history: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, Any]:
     """
-    Answer a question synchronously with full system prompt and source citations.
+    Answer a question synchronously with full system prompt, source citations,
+    and conversational memory (chat history).
     """
     if not results:
         return {"answer": "No relevant documents found.", "sources": []}
 
     llm     = _get_llm()
     context = _format_context(results)
+    history_str = _format_history(history)
     
     prompt_text = f"""{_QA_SYSTEM_PROMPT}
 
+{history_str}
 CONTEXT:
 {context}
 
