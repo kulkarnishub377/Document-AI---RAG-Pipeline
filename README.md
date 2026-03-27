@@ -1,9 +1,10 @@
 # 📄 Document AI + RAG Pipeline v2.0
 
-> Upload any document (PDF, image, Word, text, or web URL) and ask questions in plain English.  
+> Upload any document (PDF, image, Word, text, or web URL) and ask questions in plain English.
 > Fully local, private, and powered by Mistral via Ollama.
 
 <!-- Status Badges -->
+
 ![Version](https://img.shields.io/badge/Version-2.0.0-blueviolet?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -11,6 +12,7 @@
 [![CI](https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline/actions/workflows/ci.yml)
 
 <!-- Technology Badges -->
+
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-LCEL-1C3C3C?style=flat-square&logo=langchain&logoColor=white)
 ![Ollama](https://img.shields.io/badge/LLM-Mistral_via_Ollama-black?style=flat-square)
@@ -26,24 +28,24 @@
 
 ## ✨ Features
 
-| Feature | Description |
-|---------|-------------|
-| **5-Stage RAG Pipeline** | Load → Chunk → Embed/Index → Retrieve/Rerank → LLM Answer |
-| **Hybrid Search** | FAISS (semantic) + BM25 (keyword) for best-of-both-worlds retrieval |
-| **Cross-Encoder Reranking** | Re-scores candidates for higher precision |
-| **Multi-Format Support** | PDF (native + scanned), PNG/JPG/TIFF, Word DOCX, TXT, Markdown, Web URLs |
-| **Vision LLM Integration** | Uses LLaVA for image analysis with OCR fallback |
-| **Streaming Responses** | Real-time SSE streaming for natural chat experience |
-| **Conversational Memory** | Chat history maintained for contextual follow-up questions |
-| **Confidence Scores** | Color-coded confidence badges (High/Medium/Low) on every source |
-| **Analytics Dashboard** | Storage usage, per-document breakdown, Ollama status |
-| **Export Conversations** | Copy as Markdown or download conversation history |
-| **Citation Click-Through** | Click any source to view the full retrieved chunk |
-| **Multi-Language Support** | Auto-detect document language, dynamic OCR engine switching |
-| **GPU Auto-Detection** | Automatically uses FAISS GPU when NVIDIA GPU is available |
-| **Batch Upload** | Upload multiple documents at once |
-| **Docker Support** | One-command deployment with Docker Compose |
-| **100% Local** | No data leaves your machine — complete privacy |
+| Feature                           | Description                                                              |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| **5-Stage RAG Pipeline**    | Load → Chunk → Embed/Index → Retrieve/Rerank → LLM Answer            |
+| **Hybrid Search**           | FAISS (semantic) + BM25 (keyword) for best-of-both-worlds retrieval      |
+| **Cross-Encoder Reranking** | Re-scores candidates for higher precision                                |
+| **Multi-Format Support**    | PDF (native + scanned), PNG/JPG/TIFF, Word DOCX, TXT, Markdown, Web URLs |
+| **Vision LLM Integration**  | Uses LLaVA for image analysis with OCR fallback                          |
+| **Streaming Responses**     | Real-time SSE streaming for natural chat experience                      |
+| **Conversational Memory**   | Chat history maintained for contextual follow-up questions               |
+| **Confidence Scores**       | Color-coded confidence badges (High/Medium/Low) on every source          |
+| **Analytics Dashboard**     | Storage usage, per-document breakdown, Ollama status                     |
+| **Export Conversations**    | Copy as Markdown or download conversation history                        |
+| **Citation Click-Through**  | Click any source to view the full retrieved chunk                        |
+| **Multi-Language Support**  | Auto-detect document language, dynamic OCR engine switching              |
+| **GPU Auto-Detection**      | Automatically uses FAISS GPU when NVIDIA GPU is available                |
+| **Batch Upload**            | Upload multiple documents at once                                        |
+| **Docker Support**          | One-command deployment with Docker Compose                               |
+| **100% Local**              | No data leaves your machine — complete privacy                          |
 
 ---
 
@@ -100,6 +102,7 @@ open http://localhost:8000
 ### Option 2: Local Install
 
 **Prerequisites:**
+
 - Python 3.10+
 - [Ollama](https://ollama.ai/) installed and running
 
@@ -176,22 +179,22 @@ Document AI + RAG Pipeline/
 
 ## 🔌 API Reference
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Serve frontend UI |
-| `GET` | `/health` | Health check |
-| `GET` | `/status` | Index stats + Ollama status |
-| `GET` | `/analytics` | Detailed storage & document analytics |
-| `POST` | `/ingest` | Upload a single document |
-| `POST` | `/ingest/url` | Ingest a web URL |
-| `POST` | `/ingest/batch` | Upload multiple documents at once |
-| `POST` | `/query` | Ask a question (sync) |
-| `POST` | `/query-stream` | Ask a question (streaming SSE) |
-| `POST` | `/summarize` | Summarize by topic |
-| `POST` | `/extract` | Extract structured fields as JSON |
-| `POST` | `/table-query` | Ask about tables |
-| `POST` | `/clear` | Clear the entire index |
-| `DELETE` | `/document/{filename}` | Delete a specific document |
+| Method     | Endpoint                 | Description                           |
+| ---------- | ------------------------ | ------------------------------------- |
+| `GET`    | `/`                    | Serve frontend UI                     |
+| `GET`    | `/health`              | Health check                          |
+| `GET`    | `/status`              | Index stats + Ollama status           |
+| `GET`    | `/analytics`           | Detailed storage & document analytics |
+| `POST`   | `/ingest`              | Upload a single document              |
+| `POST`   | `/ingest/url`          | Ingest a web URL                      |
+| `POST`   | `/ingest/batch`        | Upload multiple documents at once     |
+| `POST`   | `/query`               | Ask a question (sync)                 |
+| `POST`   | `/query-stream`        | Ask a question (streaming SSE)        |
+| `POST`   | `/summarize`           | Summarize by topic                    |
+| `POST`   | `/extract`             | Extract structured fields as JSON     |
+| `POST`   | `/table-query`         | Ask about tables                      |
+| `POST`   | `/clear`               | Clear the entire index                |
+| `DELETE` | `/document/{filename}` | Delete a specific document            |
 
 ### Example: Query a Document
 
@@ -221,16 +224,16 @@ curl -X POST http://localhost:8000/ingest/url \
 
 All settings can be configured via environment variables or a `.env` file:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_MODEL` | `mistral` | LLM model name |
-| `EMBED_MODEL_NAME` | `all-MiniLM-L6-v2` | Embedding model |
-| `CHUNK_SIZE` | `512` | Chunk size in characters |
-| `RETRIEVAL_TOP_K` | `20` | FAISS candidates to retrieve |
-| `RERANKER_TOP_K` | `5` | Final results after reranking |
-| `ENABLE_GPU` | `auto` | GPU mode: `auto`, `true`, `false` |
-| `MULTILINGUAL_MODE` | `false` | Auto-detect document language |
-| `MAX_FILE_SIZE_MB` | `50` | Max upload size |
+| Variable              | Default              | Description                            |
+| --------------------- | -------------------- | -------------------------------------- |
+| `OLLAMA_MODEL`      | `mistral`          | LLM model name                         |
+| `EMBED_MODEL_NAME`  | `all-MiniLM-L6-v2` | Embedding model                        |
+| `CHUNK_SIZE`        | `512`              | Chunk size in characters               |
+| `RETRIEVAL_TOP_K`   | `20`               | FAISS candidates to retrieve           |
+| `RERANKER_TOP_K`    | `5`                | Final results after reranking          |
+| `ENABLE_GPU`        | `auto`             | GPU mode:`auto`, `true`, `false` |
+| `MULTILINGUAL_MODE` | `false`            | Auto-detect document language          |
+| `MAX_FILE_SIZE_MB`  | `50`               | Max upload size                        |
 
 See [`.env.example`](.env.example) for the full list.
 
@@ -249,18 +252,18 @@ See [`.env.example`](.env.example) for the full list.
 
 ## 🔧 Troubleshooting
 
-**Ollama connection refused**  
-Make sure Ollama is running: `ollama serve`  
+**Ollama connection refused**
+Make sure Ollama is running: `ollama serve`
 Check it responds: `curl http://localhost:11434/api/tags`
 
-**PaddleOCR first run is slow**  
+**PaddleOCR first run is slow**
 It downloads ~45 MB of model weights on first OCR call. This is normal — subsequent runs are fast.
 
-**Out of memory during query**  
-Switch to a smaller LLM: set `OLLAMA_MODEL=llama3.2:3b` in `.env`  
+**Out of memory during query**
+Switch to a smaller LLM: set `OLLAMA_MODEL=llama3.2:3b` in `.env`
 Or reduce `RETRIEVAL_TOP_K=10` to process fewer candidates.
 
-**FAISS index not found error**  
+**FAISS index not found error**
 Ingest at least one document first before querying:
 `curl -X POST http://localhost:8000/ingest -F "file=@test.pdf"`
 
