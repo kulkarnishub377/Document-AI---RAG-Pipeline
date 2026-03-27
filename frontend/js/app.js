@@ -281,6 +281,38 @@ function addMessage(role, content, sources = []) {
   // Update history
   state.history.push({ role, content: typeof content === 'string' ? content : '' });
   if (state.history.length > 20) state.history = state.history.slice(-20);
+  
+  return msg;
+}
+
+function addSuggestedQuestions(msgEl) {
+  const suggestions = [
+    "What are the key takeaways?",
+    "Can you provide more detail on this?",
+    "Where exactly is this mentioned in the source?",
+    "Summarize the main points briefly."
+  ];
+  
+  // Pick 3 random
+  const shuffled = suggestions.sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, 3);
+  
+  const container = document.createElement('div');
+  container.className = 'suggested-questions';
+  
+  selected.forEach(q => {
+    const pill = document.createElement('span');
+    pill.className = 'suggested-pill';
+    pill.textContent = q;
+    pill.onclick = () => quickAsk(q);
+    container.appendChild(pill);
+  });
+  
+  const body = msgEl.querySelector('.message-body');
+  if (body) body.appendChild(container);
+  
+  const messages = document.getElementById('chatMessages');
+  messages.scrollTop = messages.scrollHeight;
 }
 
 function showSource(source) {
@@ -326,7 +358,8 @@ async function syncQuery(question) {
         history: state.history.slice(-10),
       }),
     });
-    addMessage('ai', escapeHtml(result.answer), result.sources || []);
+    const msgEl = addMessage('ai', escapeHtml(result.answer), result.sources || []);
+    addSuggestedQuestions(msgEl);
   } catch { addMessage('ai', '❌ Failed to get answer. Check if Ollama is running.'); }
 }
 
@@ -388,6 +421,8 @@ async function streamQuery(question) {
 
     if (!fullText) contentEl.textContent = 'No response received.';
     state.history.push({ role: 'assistant', content: fullText });
+    
+    addSuggestedQuestions(msg);
 
   } catch {
     contentEl.textContent = '❌ Stream failed. Check if Ollama is running.';
@@ -616,6 +651,11 @@ async function clearIndex() {
 
 // ── Initialization ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  const themeSelect = document.querySelector('.theme-select');
+  if (themeSelect) themeSelect.value = savedTheme;
+
   checkStatus();
   loadDocuments();
   setInterval(checkStatus, 30000);
