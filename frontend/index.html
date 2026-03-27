@@ -29,6 +29,11 @@
       </div>
     </div>
     <div class="header-actions">
+      <select class="theme-select" onchange="changeTheme(this.value)">
+        <option value="dark">🌙 Dark (Default)</option>
+        <option value="light">☀️ Light</option>
+        <option value="neon">⚡ Cyber Neon</option>
+      </select>
       <div class="header-status" id="ollamaStatus">
         <span class="status-dot offline" id="statusDot"></span>
         <span id="statusText">Checking...</span>

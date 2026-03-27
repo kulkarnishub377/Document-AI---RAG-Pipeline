@@ -7,7 +7,8 @@
 
 /* ── CSS Variables ────────────────────────────────────────────────────────── */
 :root {
-  /* Surface palette */
+:root, [data-theme="dark"] {
+  /* Surface palette (Dark - Default) */
   --bg-primary:     #0a0e17;
   --bg-secondary:   #0f1520;
   --bg-card:        #141b2d;
@@ -50,10 +51,85 @@
   --shadow-md:      0 4px 20px rgba(0,0,0,0.3);
   --shadow-lg:      0 8px 40px rgba(0,0,0,0.4);
   --shadow-glow:    0 0 20px var(--accent-glow);
+}
+
+[data-theme="light"] {
+  --bg-primary:     #f4f6f8;
+  --bg-secondary:   #ffffff;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f8f9fa;
+  --bg-input:       #f0f2f5;
+  --bg-elevated:    #ffffff;
+  --bg-modal:       rgba(255, 255, 255, 0.95);
   
+  --text-primary:   #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted:     #718096;
+  --text-inverse:   #ffffff;
+  
+  --accent:         #4c51bf;
+  --accent-light:   #6b46c1;
+  --accent-glow:    rgba(76, 81, 191, 0.2);
+  --accent-gradient: linear-gradient(135deg, #4c51bf 0%, #6b46c1 100%);
+  
+  --success:        #38a169;
+  --success-bg:     rgba(56, 161, 105, 0.1);
+  --warning:        #d69e2e;
+  --warning-bg:     rgba(214, 158, 46, 0.1);
+  --danger:         #e53e3e;
+  --danger-bg:      rgba(229, 62, 62, 0.1);
+  --info:           #3182ce;
+  --info-bg:        rgba(49, 130, 206, 0.1);
+  
+  --border:         rgba(0, 0, 0, 0.08);
+  --border-hover:   rgba(76, 81, 191, 0.3);
+  --shadow-sm:      0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md:      0 4px 12px rgba(0,0,0,0.05);
+  --shadow-lg:      0 8px 30px rgba(0,0,0,0.08);
+  --shadow-glow:    0 0 20px var(--accent-glow);
+}
+
+[data-theme="neon"] {
+  --bg-primary:     #050510;
+  --bg-secondary:   #0a0a1a;
+  --bg-card:        #0d0d26;
+  --bg-card-hover:  #15153a;
+  --bg-input:       #08081a;
+  --bg-elevated:    #121230;
+  --bg-modal:       rgba(5, 5, 16, 0.95);
+  
+  --text-primary:   #f0f0ff;
+  --text-secondary: #a0a0ff;
+  --text-muted:     #7070b0;
+  --text-inverse:   #000000;
+  
+  --accent:         #00f0ff;
+  --accent-light:   #ff00ff;
+  --accent-glow:    rgba(0, 240, 255, 0.4);
+  --accent-gradient: linear-gradient(135deg, #00f0ff 0%, #ff00ff 100%);
+  
+  --success:        #00ff00;
+  --success-bg:     rgba(0, 255, 0, 0.1);
+  --warning:        #ffff00;
+  --warning-bg:     rgba(255, 255, 0, 0.1);
+  --danger:         #ff0055;
+  --danger-bg:      rgba(255, 0, 85, 0.1);
+  --info:           #0055ff;
+  --info-bg:        rgba(0, 85, 255, 0.1);
+  
+  --border:         rgba(0, 240, 255, 0.2);
+  --border-hover:   rgba(255, 0, 255, 0.5);
+  --shadow-sm:      0 0 5px rgba(0, 240, 255, 0.1);
+  --shadow-md:      0 0 15px rgba(0, 240, 255, 0.2);
+  --shadow-lg:      0 0 30px rgba(255, 0, 255, 0.2);
+  --shadow-glow:    0 0 25px var(--accent-glow);
+}
+
+:root {
   /* Layout */
   --sidebar-width:  320px;
-  --header-height:  64px;
+  --header-height:  70px;
+
   --radius-sm:      8px;
   --radius-md:      12px;
   --radius-lg:      16px;
@@ -632,6 +708,51 @@ body {
 .confidence-badge.high { background: var(--success-bg); color: var(--success); }
 .confidence-badge.mid { background: var(--warning-bg); color: var(--warning); }
 .confidence-badge.low { background: var(--danger-bg); color: var(--danger); }
+
+/* Suggested Questions */
+.suggested-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.suggested-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.suggested-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent-light);
+  background: rgba(108, 92, 231, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Theme Switcher */
+.theme-select {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+.theme-select:hover {
+  border-color: var(--accent);
+}
 
 /* ── Chat Input ───────────────────────────────────────────────────────────── */
 .chat-input-area {
