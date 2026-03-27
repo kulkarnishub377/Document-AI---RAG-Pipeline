@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-03-27
+
+### Added
+- **Excel/CSV/PPTX support** — parse `.xlsx`, `.xls`, `.csv`, and `.pptx` files natively via `openpyxl` and `python-pptx`
+- **Persistent chat sessions (SQLite)** — `utils/sessions.py` manages conversations across browsers with CRUD API
+- **Query response caching** — `utils/cache.py` provides thread-safe LRU cache with configurable TTL
+- **Document comparison mode** — `features/comparator.py` analyzes two documents for similarities and differences
+- **Knowledge graph extraction** — `features/knowledge_graph.py` builds entity-relationship graphs with co-occurrence tracking
+- **PDF annotation export** — `features/pdf_annotator.py` highlights source passages in PDFs using PyMuPDF
+- **Real-time collaboration** — `features/collaboration.py` enables multi-user WebSocket Q&A rooms
+- **API rate limiting** — `utils/rate_limiter.py` with sliding-window per-IP limiting + `X-RateLimit-*` headers
+- **Source-filtered queries** — restrict Q&A to a specific document via `source_filter` parameter
+- **Custom exception hierarchy** — `utils/exceptions.py` with 8 specific exception classes
+- **Structured JSON logging** — `LOG_FORMAT=json` for production systems
+- **API versioning** — OpenAPI docs at `/api/v1/docs`
+- **Document listing endpoint** — `GET /documents` returns all uploaded files
+- **Cache management API** — `GET /cache/stats` and `POST /cache/clear`
+- **Session CRUD API** — 6 endpoints for managing persistent chat sessions
+- **Knowledge graph API** — 3 endpoints for entity search and graph data
+- **30+ total endpoints** (up from 14 in v2.0)
+
+### Changed
+- **`pipeline.py` rewritten** — integrated caching, knowledge graph, comparison, and source filtering
+- **`config.py` expanded** — 30+ configurable settings (up from 15)
+- **`api/app.py` rewritten** — all endpoints now `async`, using custom exceptions
+- **Sync Q&A now supports chat history** — `answer_question()` accepts `history` parameter
+- **`ALLOWED_EXTENSIONS` consolidated** — single source of truth in `config.py` (was duplicated in 4 places)
+
+### Fixed
+- **Critical: `delete_source()` FAISS crash** — `IndexFlatIP` doesn't support `remove_ids()`; now rebuilds index from remaining vectors
+- **BM25 thread safety** — build/read operations moved inside `_lock`
+- **Chat history ignored in sync mode** — sync `/query` now passes history to LLM
+
+### Security
+- Rate limiting prevents API abuse
+- Custom exception classes prevent leaking internal errors
+
 ## [2.0.0] - 2026-03-20
 
 ### Added
