@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "doc-rag-pipeline"
 version = "3.0.0"
-description = "Intelligent Document Q&A pipeline using local models, FAISS, and Mistral."
+description = "Enterprise-grade Document AI + RAG Pipeline — upload any document and ask questions using local LLMs. Supports PDF, Excel, PowerPoint, OCR, knowledge graphs, RAGAS evaluation, and real-time collaboration."
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -13,9 +13,10 @@ authors = [
 ]
 requires-python = ">=3.10"
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -23,20 +24,30 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Indexing",
+    "Topic :: Text Processing :: General",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Scientific/Engineering :: Information Analysis",
     "Framework :: FastAPI",
     "Operating System :: OS Independent",
+    "Typing :: Typed",
+    "Natural Language :: English",
+    "Environment :: Web Environment",
 ]
 keywords = [
-    "document-ai", "faiss", "ollama", "langchain",
-    "ocr", "semantic-search", "vector-store", "question-answering",
-    "knowledge-graph", "websocket", "pdf-annotation",
+    "document-ai", "rag", "retrieval-augmented-generation", "faiss",
+    "ollama", "langchain", "ocr", "semantic-search", "vector-store",
+    "question-answering", "knowledge-graph", "websocket", "pdf-annotation",
+    "ragas", "evaluation", "document-comparison", "mistral", "llm",
+    "fastapi", "paddleocr", "sentence-transformers", "cross-encoder",
+    "bm25", "hybrid-search", "chat-sessions", "rate-limiting",
+    "enterprise", "private-ai", "local-llm", "document-intelligence",
 ]
 dependencies = [
     # OCR + Layout
     "paddlepaddle>=3.0.0",
     "paddleocr>=2.7.3",
 
-    # PDF / DOCX parsing
+    # Document Parsing (PDF / DOCX / Excel / PPTX)
     "pdfplumber==0.11.0",
     "PyMuPDF>=1.24.5",
     "python-docx==1.1.2",
@@ -59,6 +70,7 @@ dependencies = [
     "fastapi==0.111.1",
     "uvicorn[standard]==0.30.3",
     "python-multipart==0.0.9",
+    "websockets>=12.0",
 
     # Utilities
     "tqdm==4.66.4",

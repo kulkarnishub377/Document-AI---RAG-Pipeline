@@ -1,28 +1,27 @@
-# ─────────────────────────────────────────
-# Document AI + RAG Pipeline  –  8 GB spec
-# ─────────────────────────────────────────
+# ─────────────────────────────────────────────────
+# Document AI + RAG Pipeline v3.0  –  Dependencies
+# ─────────────────────────────────────────────────
 
 # OCR + Layout
 paddlepaddle>=3.0.0
 paddleocr>=2.7.3
 
-# PDF / DOCX parsing
+# Document Parsing (PDF / DOCX / Excel / PPTX)
 pdfplumber==0.11.0
 PyMuPDF>=1.24.5
 python-docx==1.1.2
+openpyxl>=3.1.2
+python-pptx>=0.6.23
 
-# Chunking & text utilities
+# Chunking & LLM
 langchain>=0.3.0
 langchain-community>=0.3.0
 langchain-ollama>=0.1.0
-tiktoken==0.7.0               # token counter for chunk sizing
+tiktoken==0.7.0
 
 # Embedding model
 sentence-transformers>=3.0.1
-faiss-cpu>=1.9.0              # CPU-only FAISS  (no GPU needed)
-
-# Reranker
-# (CrossEncoder is already inside sentence-transformers)
+faiss-cpu>=1.9.0
 
 # Vector store helpers
 numpy>=2.1.0
@@ -31,7 +30,8 @@ scipy>=1.14.0
 # API layer
 fastapi==0.111.1
 uvicorn[standard]==0.30.3
-python-multipart==0.0.9       # file uploads
+python-multipart==0.0.9
+websockets>=12.0
 
 # Utilities
 tqdm==4.66.4
@@ -45,3 +45,6 @@ beautifulsoup4>=4.12.3
 
 # Hybrid Search
 rank_bm25>=0.2.2
+
+# Language detection
+langdetect>=1.0.9

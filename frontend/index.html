@@ -1,217 +1,275 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Document AI — Upload documents and ask questions in natural language. Powered by RAG pipeline with OCR, FAISS, and local LLM.">
-    <title>Document AI — Intelligent Document Q&A</title>
-
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-    <!-- Markdown & Code Highlighting -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
-    <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Document AI + RAG Pipeline — Upload documents and ask questions using local AI. Private, fast, and powerful.">
+  <title>Document AI + RAG Pipeline v3.0</title>
+  <link rel="stylesheet" href="/frontend/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
 </head>
 <body>
-    <!-- ── Animated Background ─────────────────────────────────────────── -->
-    <div class="bg-grid"></div>
-    <div class="bg-glow bg-glow--1"></div>
-    <div class="bg-glow bg-glow--2"></div>
 
-    <!-- ── App Container ───────────────────────────────────────────────── -->
-    <div id="app" class="app">
+<!-- Background Effects -->
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+<div class="bg-glow bg-glow-3"></div>
 
-        <!-- ── Sidebar ─────────────────────────────────────────────────── -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar__brand">
-                <div class="sidebar__logo">
-                    <svg viewBox="0 0 32 32" fill="none"><rect x="2" y="4" width="28" height="24" rx="3" stroke="currentColor" stroke-width="2"/><path d="M8 12h16M8 17h10M8 22h13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="24" cy="21" r="5" fill="var(--accent)" stroke="var(--bg-primary)" stroke-width="2"/><path d="M23 21l1 1 2-2" stroke="var(--bg-primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <div>
-                    <h1 class="sidebar__title">Document AI</h1>
-                    <p class="sidebar__subtitle">RAG Pipeline v2.0</p>
-                </div>
-            </div>
+<!-- App Layout -->
+<div class="app-layout">
 
-            <!-- Upload Zone -->
-            <div class="upload-zone" id="uploadZone">
-                <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp,.docx,.doc,.txt,.md" hidden multiple>
-                <div class="upload-zone__icon">
-                    <svg viewBox="0 0 48 48" fill="none"><path d="M24 32V16m0 0l-6 6m6-6l6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 30v4a4 4 0 01-4 4H12a4 4 0 01-4-4v-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-                </div>
-                <p class="upload-zone__text">Drop files here or <span class="upload-zone__link">browse</span></p>
-                <p class="upload-zone__hint">PDF, Images, Word, TXT — up to 50 MB</p>
-            </div>
-
-            <!-- URL Ingest -->
-            <form class="url-ingest" id="urlForm">
-                <input type="url" id="urlInput" class="url-ingest__input" placeholder="https://example.com/article" required>
-                <button type="submit" class="url-ingest__btn" title="Add Webpage">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-                </button>
-            </form>
-
-            <!-- Progress Bar -->
-            <div class="progress-container" id="progressContainer" style="display:none">
-                <div class="progress-bar">
-                    <div class="progress-bar__fill" id="progressFill"></div>
-                </div>
-                <p class="progress-text" id="progressText">Uploading…</p>
-            </div>
-
-            <!-- Documents List -->
-            <div class="sidebar__section">
-                <h3 class="sidebar__section-title">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
-                    Indexed Documents
-                </h3>
-                <ul class="doc-list" id="docList">
-                    <li class="doc-list__empty">No documents yet</li>
-                </ul>
-            </div>
-
-            <!-- Chat History -->
-            <div class="sidebar__section">
-                <h3 class="sidebar__section-title">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd"/></svg>
-                    Recent Queries
-                </h3>
-                <ul class="history-list" id="historyList">
-                    <li class="history-list__empty">No queries yet</li>
-                </ul>
-            </div>
-
-            <!-- Status -->
-            <div class="sidebar__footer">
-                <div class="status-badge" id="statusBadge">
-                    <span class="status-dot" id="statusDot"></span>
-                    <span id="statusText">Checking…</span>
-                </div>
-                <div class="sidebar__actions">
-                    <button class="btn btn--ghost btn--sm" id="analyticsBtn" title="View analytics">
-                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
-                    </button>
-                    <button class="btn btn--ghost btn--sm" id="clearBtn" title="Clear all indexed documents">
-                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                    </button>
-                </div>
-            </div>
-        </aside>
-
-        <!-- ── Main Content ────────────────────────────────────────────── -->
-        <main class="main" id="mainContent">
-
-            <!-- Mode Tabs -->
-            <div class="tabs" id="modeTabs">
-                <button class="tab tab--active" data-mode="qa" id="tab-qa">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
-                    Q&A
-                </button>
-                <button class="tab" data-mode="summary" id="tab-summary">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
-                    Summarize
-                </button>
-                <button class="tab" data-mode="extract" id="tab-extract">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z"/><path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z"/><path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z"/></svg>
-                    Extract
-                </button>
-                <button class="tab" data-mode="table" id="tab-table">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clip-rule="evenodd"/></svg>
-                    Table Q&A
-                </button>
-            </div>
-
-            <!-- Chat Messages Area -->
-            <div class="chat" id="chatContainer">
-                <div class="chat__messages" id="chatMessages">
-                    <!-- Welcome Screen -->
-                    <div class="welcome" id="welcomeScreen">
-                        <div class="welcome__icon">
-                            <svg viewBox="0 0 64 64" fill="none"><rect x="8" y="12" width="48" height="40" rx="4" stroke="var(--accent)" stroke-width="2.5"/><path d="M18 26h28M18 34h20M18 42h24" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/><circle cx="48" cy="40" r="10" fill="var(--accent)" opacity="0.15"/><path d="M45 40h6M48 37v6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg>
-                        </div>
-                        <h2 class="welcome__title">Ask anything about your documents</h2>
-                        <p class="welcome__desc">Upload a PDF, image, or Word file, then ask questions in plain English. The AI reads your documents, finds relevant sections, and answers with exact source citations.</p>
-                        <div class="welcome__features">
-                            <div class="feature-card">
-                                <div class="feature-card__icon">📄</div>
-                                <h4>Multi-Format</h4>
-                                <p>PDF, scanned images, Word, plain text</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-card__icon">🔍</div>
-                                <h4>Semantic Search</h4>
-                                <p>Finds by meaning, not just keywords</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-card__icon">🧠</div>
-                                <h4>Local AI</h4>
-                                <p>100% offline, no data leaves your machine</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-card__icon">📎</div>
-                                <h4>Source Citations</h4>
-                                <p>Every answer cites the exact file and page</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Input Area -->
-            <div class="input-area" id="inputArea">
-                <!-- Extract fields input (hidden by default) -->
-                <div class="fields-input" id="fieldsInput" style="display:none">
-                    <label class="fields-input__label">Fields to extract (comma-separated):</label>
-                    <input type="text" class="fields-input__field" id="fieldsField" placeholder="invoice_number, date, total_amount, vendor_name">
-                </div>
-
-                <div class="input-row">
-                    <textarea class="input-box" id="queryInput" placeholder="Ask a question about your documents…" rows="1"></textarea>
-                    <button class="btn btn--primary btn--send" id="sendBtn" disabled>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    </button>
-                </div>
-                <div class="input-actions">
-                    <p class="input-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</p>
-                    <button class="btn btn--ghost btn--xs" id="exportBtn" title="Export conversation as Markdown">
-                        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                        Export
-                    </button>
-                </div>
-            </div>
-        </main>
+  <!-- ═══ HEADER ═══ -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="header-brand-logo">📄</div>
+      <div class="header-brand-text">
+        <h1>Document AI</h1>
+        <span>RAG Pipeline v3.0</span>
+      </div>
     </div>
+    <div class="header-actions">
+      <div class="header-status" id="ollamaStatus">
+        <span class="status-dot offline" id="statusDot"></span>
+        <span id="statusText">Checking...</span>
+      </div>
+      <button class="btn-icon" data-tooltip="Settings" onclick="openModal('settingsModal')">⚙️</button>
+    </div>
+  </header>
 
-    <!-- ── Citation Detail Modal ────────────────────────────────────────── -->
-    <div class="modal-overlay" id="citationModal" style="display:none">
-        <div class="modal">
-            <div class="modal__header">
-                <h3 class="modal__title" id="citationModalTitle">Source Detail</h3>
-                <button class="modal__close" id="citationModalClose">&times;</button>
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-panel="chat" onclick="switchPanel('chat')">
+        <span class="icon">💬</span> Chat
+      </div>
+      <div class="nav-item" data-panel="upload" onclick="switchPanel('upload')">
+        <span class="icon">📤</span> Upload
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-section-title">Features</div>
+      <div class="nav-item" data-panel="compare" onclick="switchPanel('compare')">
+        <span class="icon">🔍</span> Compare
+      </div>
+      <div class="nav-item" data-panel="extract" onclick="switchPanel('extract')">
+        <span class="icon">📋</span> Extract
+      </div>
+      <div class="nav-item" data-panel="summarize" onclick="switchPanel('summarize')">
+        <span class="icon">📝</span> Summarize
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-section-title">Insights</div>
+      <div class="nav-item" data-panel="analytics" onclick="switchPanel('analytics')">
+        <span class="icon">📊</span> Analytics
+      </div>
+      <div class="nav-item" data-panel="ragas" onclick="switchPanel('ragas')">
+        <span class="icon">🎯</span> RAGAS Eval
+      </div>
+    </nav>
+
+    <div class="nav-divider"></div>
+
+    <!-- Document List -->
+    <div class="sidebar-files" id="sidebarFiles">
+      <div class="sidebar-files-header">
+        <h3>Documents</h3>
+        <span class="sidebar-files-count" id="fileCount">0</span>
+      </div>
+      <div id="fileList"></div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="main-content">
+
+    <!-- Chat Panel -->
+    <div class="chat-panel panel active" id="panel-chat">
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-welcome" id="chatWelcome">
+          <div class="chat-welcome-icon">🧠</div>
+          <h2>Ask Anything About Your Documents</h2>
+          <p>Upload PDFs, Excel files, PowerPoint, images, or paste a URL.<br>Then ask questions in plain English — all answers are grounded in your data.</p>
+          <div class="quick-actions">
+            <div class="quick-action" onclick="quickAsk('What is this document about?')">
+              <span class="icon">🔎</span> Overview
             </div>
-            <div class="modal__body" id="citationModalBody"></div>
+            <div class="quick-action" onclick="quickAsk('Summarize the key points')">
+              <span class="icon">📝</span> Summarize
+            </div>
+            <div class="quick-action" onclick="switchPanel('upload')">
+              <span class="icon">📤</span> Upload
+            </div>
+          </div>
         </div>
-    </div>
-
-    <!-- ── Analytics Modal ──────────────────────────────────────────────── -->
-    <div class="modal-overlay" id="analyticsModal" style="display:none">
-        <div class="modal modal--wide">
-            <div class="modal__header">
-                <h3 class="modal__title">📊 Pipeline Analytics</h3>
-                <button class="modal__close" id="analyticsModalClose">&times;</button>
-            </div>
-            <div class="modal__body" id="analyticsModalBody">
-                <p>Loading analytics…</p>
-            </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-wrapper">
+          <textarea id="chatInput" placeholder="Ask a question about your documents..." rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendQuery()}"></textarea>
+          <div class="chat-input-actions">
+            <button class="btn-send" id="sendBtn" onclick="sendQuery()" data-tooltip="Send">➤</button>
+          </div>
         </div>
+      </div>
     </div>
 
-    <script src="/static/js/app.js"></script>
+    <!-- Upload Panel -->
+    <div class="panel" id="panel-upload" style="display:none; flex:1; overflow-y:auto;">
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <div class="icon">📁</div>
+        <h3>Drop documents here or click to browse</h3>
+        <p>Maximum file size: 50 MB</p>
+        <div class="supported">
+          <span class="format-tag">PDF</span>
+          <span class="format-tag">DOCX</span>
+          <span class="format-tag">XLSX</span>
+          <span class="format-tag">CSV</span>
+          <span class="format-tag">PPTX</span>
+          <span class="format-tag">PNG</span>
+          <span class="format-tag">JPG</span>
+          <span class="format-tag">TXT</span>
+          <span class="format-tag">MD</span>
+        </div>
+        <div class="upload-progress" id="uploadProgress" style="display:none">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+          <div class="progress-text" id="progressText">Uploading...</div>
+        </div>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.xls,.csv,.pptx,.png,.jpg,.jpeg,.tiff,.txt,.md" multiple style="display:none" onchange="handleFileSelect(event)">
+      <!-- URL Ingest -->
+      <div style="padding:0 32px 24px;max-width:600px;margin:0 auto;">
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="urlInput" placeholder="Or paste a web URL to ingest..." style="flex:1;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-sans);font-size:13px;outline:none;">
+          <button class="btn btn-primary" onclick="ingestUrl()">Ingest URL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare Panel -->
+    <div class="panel compare-panel" id="panel-compare" style="display:none">
+      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📑 Document Comparison</h2>
+      <div class="compare-selector">
+        <select class="compare-doc-select" id="compareDocA"><option value="">Select Document A</option></select>
+        <span class="compare-vs">VS</span>
+        <select class="compare-doc-select" id="compareDocB"><option value="">Select Document B</option></select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:24px;">
+        <input type="text" id="compareQuestion" placeholder="Specific comparison question (optional)..." style="flex:1;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-sans);font-size:13px;outline:none;">
+        <button class="btn btn-primary" onclick="compareDocuments()">Compare</button>
+      </div>
+      <div class="compare-result" id="compareResult" style="display:none"></div>
+    </div>
+
+    <!-- Extract Panel -->
+    <div class="panel" id="panel-extract" style="display:none;flex:1;overflow-y:auto;padding:24px 32px;">
+      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📋 Field Extraction</h2>
+      <div style="max-width:600px;">
+        <textarea id="extractFields" placeholder="Enter field names, one per line:&#10;invoice_number&#10;vendor_name&#10;total_amount&#10;due_date" rows="6" style="width:100%;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;resize:vertical;outline:none;margin-bottom:12px;"></textarea>
+        <button class="btn btn-primary" onclick="extractFields()" style="width:100%;">Extract Fields</button>
+      </div>
+      <div id="extractResult" style="margin-top:24px;"></div>
+    </div>
+
+    <!-- Summarize Panel -->
+    <div class="panel" id="panel-summarize" style="display:none;flex:1;overflow-y:auto;padding:24px 32px;">
+      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📝 Smart Summary</h2>
+      <div style="max-width:600px;display:flex;gap:8px;margin-bottom:24px;">
+        <input type="text" id="summaryTopic" placeholder="Topic to summarize (or leave empty for general)..." style="flex:1;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-sans);font-size:13px;outline:none;">
+        <button class="btn btn-primary" onclick="getSummary()">Summarize</button>
+      </div>
+      <div id="summaryResult" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;display:none;line-height:1.8;"></div>
+    </div>
+
+    <!-- Analytics Panel -->
+    <div class="panel analytics-panel" id="panel-analytics" style="display:none">
+      <h2 style="margin-bottom:20px;font-size:20px;font-weight:700;">📊 Pipeline Analytics</h2>
+      <div class="stats-grid" id="analyticsStats"></div>
+      <h3 style="margin:16px 0 12px;font-size:14px;font-weight:600;color:var(--text-secondary);">Documents by Source</h3>
+      <div id="sourceBreakdown" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;"></div>
+    </div>
+
+    <!-- RAGAS Panel -->
+    <div class="panel analytics-panel" id="panel-ragas" style="display:none">
+      <h2 style="margin-bottom:6px;font-size:20px;font-weight:700;">🎯 RAGAS Evaluation Dashboard</h2>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:24px;">Measure RAG quality: Faithfulness · Relevancy · Precision · Recall</p>
+      <div class="ragas-grid" id="ragasMetrics">
+        <div class="ragas-metric">
+          <div class="ragas-metric-label">Faithfulness</div>
+          <div class="ragas-score-ring" id="ringFaith"></div>
+          <div class="ragas-trend" id="trendFaith">—</div>
+        </div>
+        <div class="ragas-metric">
+          <div class="ragas-metric-label">Relevancy</div>
+          <div class="ragas-score-ring" id="ringRelevancy"></div>
+          <div class="ragas-trend" id="trendRelevancy">—</div>
+        </div>
+        <div class="ragas-metric">
+          <div class="ragas-metric-label">Precision</div>
+          <div class="ragas-score-ring" id="ringPrecision"></div>
+          <div class="ragas-trend" id="trendPrecision">—</div>
+        </div>
+        <div class="ragas-metric">
+          <div class="ragas-metric-label">Recall</div>
+          <div class="ragas-score-ring" id="ringRecall"></div>
+          <div class="ragas-trend" id="trendRecall">—</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:24px;">
+        <button class="btn btn-primary" onclick="loadRagasDashboard()">Refresh</button>
+        <button class="btn btn-secondary" onclick="clearRagasHistory()">Clear History</button>
+      </div>
+      <div class="stats-grid" id="ragasStats"></div>
+      <h3 style="margin:16px 0 12px;font-size:14px;font-weight:600;color:var(--text-secondary);">Recent Evaluations</h3>
+      <div id="ragasHistory" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;max-height:300px;overflow-y:auto;"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h2>⚙️ Settings</h2>
+      <button class="btn-icon" onclick="closeModal('settingsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Model</label>
+        <input type="text" value="mistral" readonly style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;margin-top:6px;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Streaming</label>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <button class="btn btn-primary" id="streamOn" onclick="setStreaming(true)" style="flex:1;">On</button>
+          <button class="btn btn-secondary" id="streamOff" onclick="setStreaming(false)" style="flex:1;">Off</button>
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-secondary" onclick="clearCache()" style="width:100%;margin-bottom:8px;">🗑️ Clear Query Cache</button>
+        <button class="btn btn-secondary" onclick="clearIndex()" style="width:100%;color:var(--danger);">⚠️ Clear Entire Index</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Source Detail Modal -->
+<div class="modal-overlay" id="sourceModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="sourceModalTitle">Source</h2>
+      <button class="btn-icon" onclick="closeModal('sourceModal')">✕</button>
+    </div>
+    <div class="modal-body" id="sourceModalBody" style="font-family:var(--font-mono);font-size:13px;line-height:1.8;white-space:pre-wrap;"></div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/frontend/js/app.js"></script>
 </body>
 </html>
