@@ -1,0 +1,723 @@
+{
+  "entities": [
+    {
+      "name": "Mock Test",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 75
+    },
+    {
+      "name": "Mechanic Diesel",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 75
+    },
+    {
+      "name": "Safety Workshop Practice\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 4
+    },
+    {
+      "name": "Water Vapour",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Question Bank Page",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 75
+    },
+    {
+      "name": "Practice\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 10
+    },
+    {
+      "name": "Fixed Anvil Insert",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Copper Sulphate",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Parallel Block",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Spring Joint",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Fitting\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 8
+    },
+    {
+      "name": "Thumb Screw",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Thumb Nu",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Adjustable Tubular",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Cast Iron",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Electronics\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 5
+    },
+    {
+      "name": "Which Law",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Gas Welding\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 5
+    },
+    {
+      "name": "Pneumatics\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 5
+    },
+    {
+      "name": "Control Valve",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Push Button",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Air Compressor",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Air Service",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Foot Pedal",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Rotor Pump",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Service Equipments\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 3
+    },
+    {
+      "name": "Hydraulic Jack",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Mechanical Jack",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Diesel Engine Overview\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 4
+    },
+    {
+      "name": "Diesel Engine",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 7
+    },
+    {
+      "name": "Cam Shaft",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 3
+    },
+    {
+      "name": "Crank Shaft",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 3
+    },
+    {
+      "name": "Lubricating System\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 4
+    },
+    {
+      "name": "Stationary Engine\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Emission Control System\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 3
+    },
+    {
+      "name": "Reduce Nox",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 2
+    },
+    {
+      "name": "Reduce Co",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 1
+    },
+    {
+      "name": "Starting System\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 4
+    },
+    {
+      "name": "Trouble Shooting\nReviewed",
+      "entity_type": "ENTITY",
+      "sources": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ],
+      "mentions": 4
+    }
+  ],
+  "relationships": [
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Mechanic Diesel",
+      "relation_type": "co-occurs",
+      "weight": 75,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Safety Workshop Practice\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Safety Workshop Practice\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Practice\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 10,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Practice\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 10,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Fixed Anvil Insert",
+      "target_entity": "Question Bank Page",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Copper Sulphate",
+      "target_entity": "Question Bank Page",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Copper Sulphate",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Copper Sulphate",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Practice\nReviewed",
+      "target_entity": "Copper Sulphate",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Parallel Block",
+      "target_entity": "Spring Joint",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Fitting\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 8,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Fitting\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 8,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Adjustable Tubular",
+      "target_entity": "Question Bank Page",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Electronics\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 5,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Electronics\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 5,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Gas Welding\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 5,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Gas Welding\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 5,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Pneumatics\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 5,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Pneumatics\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 5,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Control Valve",
+      "target_entity": "Question Bank Page",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Air Compressor",
+      "target_entity": "Air Service",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Air Compressor",
+      "target_entity": "Foot Pedal",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Air Service",
+      "target_entity": "Foot Pedal",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Service Equipments\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 3,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Service Equipments\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 3,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Hydraulic Jack",
+      "target_entity": "Mechanical Jack",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Diesel Engine Overview\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Diesel Engine Overview\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Diesel Engine",
+      "relation_type": "co-occurs",
+      "weight": 7,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Diesel Engine",
+      "relation_type": "co-occurs",
+      "weight": 7,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Cam Shaft",
+      "target_entity": "Crank Shaft",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Lubricating System\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Lubricating System\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Stationary Engine\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Stationary Engine\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 2,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Emission Control System\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 3,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Emission Control System\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 3,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Reduce Nox",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Reduce Nox",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Emission Control System\nReviewed",
+      "target_entity": "Reduce Nox",
+      "relation_type": "co-occurs",
+      "weight": 1,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Starting System\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Starting System\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mock Test",
+      "target_entity": "Trouble Shooting\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    },
+    {
+      "source_entity": "Mechanic Diesel",
+      "target_entity": "Trouble Shooting\nReviewed",
+      "relation_type": "co-occurs",
+      "weight": 4,
+      "source_docs": [
+        "MechanicDiesel 1st Year Hindi[1].pdf"
+      ]
+    }
+  ]
+}
