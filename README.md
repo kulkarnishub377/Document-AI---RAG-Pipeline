@@ -28,6 +28,44 @@
 
 ---
 
+## 🖥️ Frontend Demo
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="Frontend_imges/home.png" alt="Chat Q&A Interface" width="100%"/>
+      <br/><b>💬 Chat Q&A Interface</b>
+      <br/><sub>AI-powered document Q&A with streaming, markdown rendering, and session management</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="Frontend_imges/data_uplods.png" alt="Data Lake" width="100%"/>
+      <br/><b>📂 Data Lake & Ingestion</b>
+      <br/><sub>Upload PDFs, DOCX, images, or ingest web URLs with real-time vector indexing</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="Frontend_imges/doc_compare.png" alt="Document Comparator" width="100%"/>
+      <br/><b>⚖️ Document Comparator Engine</b>
+      <br/><sub>Side-by-side AI-driven semantic comparison between any two indexed documents</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="Frontend_imges/screenshot-1774864155482.png" alt="Knowledge Graph" width="100%"/>
+      <br/><b>🕸️ Knowledge Graph Explorer</b>
+      <br/><sub>Interactive force-directed entity graph with 74 entities and 87 relationships</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <img src="Frontend_imges/screenshot-1774864171806.png" alt="Data Lake with Index" width="60%"/>
+      <br/><b>📊 Active Vector Index</b>
+      <br/><sub>View and manage all indexed documents with chunk counts, file types, and delete actions</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## ✨ What's New in v3.1
 
 | Feature                                | Description                                                                |
@@ -35,7 +73,7 @@
 | 🔧 **Thread-Safe Vector Store**        | Fixed FAISS race conditions with proper locking                           |
 | ⚡ **Reciprocal Rank Fusion (RRF)**    | Accurate hybrid scoring between FAISS and BM25 instead of zero-insertion  |
 | 🤖 **OpenAI Provider Support**         | Switchable LLM backend — Ollama (default) or OpenAI via `LLM_PROVIDER`   |
-| 🧠 **Enhanced Demo Mode**              | Intelligent offline answers using keyword extraction & entity analysis     |
+| 🧠 **Local Analysis Engine**           | Intelligent offline answers using keyword extraction & entity analysis     |
 | 🔍 **Semantic Search**                 | Dedicated search endpoint returning ranked passages without LLM overhead  |
 | 📑 **Batch Q&A**                       | Submit multiple questions at once, export results as CSV                   |
 | 📊 **Query Analytics Dashboard**       | Track query frequency, response times, popular documents, failure rates   |
