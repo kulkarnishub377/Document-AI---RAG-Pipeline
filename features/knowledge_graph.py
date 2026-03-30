@@ -1,10 +1,7 @@
 # features/knowledge_graph.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Knowledge Graph Extraction using spaCy / regex NER + NetworkX
-#
-# Extracts entities and relationships from document chunks, builds a
-# traversable graph that can answer questions like:
-#   "Who is connected to whom?" / "What entities are mentioned together?"
+# v3.1 — Cap relationships per chunk (P10), fix datetime, add graph stats
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -14,11 +11,12 @@ import re
 import threading
 from collections import defaultdict
 from dataclasses import dataclass, field, asdict
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from loguru import logger
 
-from config import KG_DATA_PATH, KNOWLEDGE_GRAPH_ENABLED
+from config import KG_DATA_PATH, KNOWLEDGE_GRAPH_ENABLED, KG_MAX_ENTITIES_PER_CHUNK
 
 
 @dataclass
@@ -91,7 +89,7 @@ class KnowledgeGraph:
         # Dates
         for m in re.finditer(
             r'\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b'
-            r'|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s*\d{4}\b',
+            r'|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s*\d{4}',
             text, re.IGNORECASE
         ):
             entities.append((m.group().strip(), "DATE"))
@@ -119,6 +117,7 @@ class KnowledgeGraph:
     def process_chunk(self, text: str, source: str) -> int:
         """
         Extract entities from a text chunk and add them to the graph.
+        v3.1: Caps entities per chunk at KG_MAX_ENTITIES_PER_CHUNK (P10).
         Returns the number of new entities discovered.
         """
         if not KNOWLEDGE_GRAPH_ENABLED:
@@ -127,6 +126,9 @@ class KnowledgeGraph:
         raw_entities = self.extract_entities(text)
         if not raw_entities:
             return 0
+
+        # v3.1 (P10): Cap entities per chunk to avoid O(n²) explosion
+        raw_entities = raw_entities[:KG_MAX_ENTITIES_PER_CHUNK]
 
         new_count = 0
         chunk_entity_names: List[str] = []

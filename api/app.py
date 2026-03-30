@@ -1,770 +1,825 @@
 # api/app.py
 # ─────────────────────────────────────────────────────────────────────────────
-# FastAPI REST Server — v3.0
-#
-# 30+ endpoints covering ingestion, querying, sessions, knowledge graph,
-# document comparison, collaboration, PDF annotation, and analytics.
+# FastAPI REST + WebSocket Server
+# v3.1 — Lifespan context manager, asyncio.to_thread for all sync ops,
+#         configurable CORS, new endpoints (search, batch, export/import,
+#         versions, crawl, query analytics), improved security
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
 
 import asyncio
+import io
 import json
-from dataclasses import asdict
+import os
+import re
+import time
+import threading
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
 from loguru import logger
+from pydantic import BaseModel, Field
 
 import pipeline
 from config import (
-    __version__, FRONTEND_DIR, UPLOAD_DIR, MAX_FILE_SIZE_MB,
-    ALLOWED_EXTENSIONS, API_VERSION, WS_ENABLED,
-    KNOWLEDGE_GRAPH_ENABLED,
+    ALLOWED_EXTENSIONS,
+    ANNOTATED_PDF_DIR,
+    API_PORT,
+    CORS_ORIGINS,
+    CRAWL_ENABLED,
+    CRAWL_INTERVAL_MINS,
+    FRONTEND_DIR,
+    MAX_FILE_SIZE_MB,
+    UPLOAD_DIR,
+    WS_ENABLED,
+    __version__,
 )
-from llm.prompt_chains import (
-    check_ollama_connection,
-    stream_answer_question,
-)
+from llm.prompt_chains import check_ollama_connection
 from utils.cache import query_cache
+from utils.exceptions import (
+    DocumentNotFoundError,
+    FileTooLargeError,
+    PipelineError,
+    UnsupportedFileTypeError,
+)
 from utils.rate_limiter import rate_limiter
 from utils.sessions import session_manager
-from utils.exceptions import (
-    PipelineError,
-    DocumentNotFoundError,
-    UnsupportedFileTypeError,
-    FileTooLargeError,
-    OllamaNotReachableError,
-    RateLimitExceededError,
-)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# App
-# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Pydantic Request/Response Models ─────────────────────────────────────────
+
+class QueryRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2000)
+    session_id: Optional[str] = None
+    source_filter: Optional[str] = None
+
+class SummarizeRequest(BaseModel):
+    topic: str = "the document"
+    source_filter: Optional[str] = None
+
+class ExtractRequest(BaseModel):
+    fields: List[str] = Field(..., min_length=1)
+    context_query: str = ""
+
+class CompareRequest(BaseModel):
+    doc_a: str
+    doc_b: str
+    question: str = ""
+
+class TableQueryRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2000)
+    source_filter: Optional[str] = None
+
+class UrlIngestRequest(BaseModel):
+    url: str = Field(..., min_length=5)
+
+class SessionCreate(BaseModel):
+    title: str = "Untitled"
+
+class BatchQueryRequest(BaseModel):
+    questions: List[str] = Field(..., min_length=1, max_length=50)
+    source_filter: Optional[str] = None
+
+class SearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=2000)
+    top_k: int = Field(20, ge=1, le=100)
+    source_filter: Optional[str] = None
+
+class CrawlUrlRequest(BaseModel):
+    url: str = Field(..., min_length=5)
+
+
+# ── Scheduled Crawl Background Thread (v3.1 — F9) ───────────────────────────
+
+_crawl_timer: Optional[threading.Timer] = None
+
+def _start_crawl_scheduler():
+    """Start the background crawl scheduler."""
+    global _crawl_timer
+
+    def crawl_loop():
+        global _crawl_timer
+        try:
+            urls = pipeline.get_crawl_urls()
+            if urls:
+                logger.info(f"Running scheduled crawl for {len(urls)} URLs")
+                pipeline.run_scheduled_crawl()
+        except Exception as e:
+            logger.error(f"Scheduled crawl failed: {e}")
+        finally:
+            _crawl_timer = threading.Timer(CRAWL_INTERVAL_MINS * 60, crawl_loop)
+            _crawl_timer.daemon = True
+            _crawl_timer.start()
+
+    if CRAWL_ENABLED:
+        _crawl_timer = threading.Timer(CRAWL_INTERVAL_MINS * 60, crawl_loop)
+        _crawl_timer.daemon = True
+        _crawl_timer.start()
+        logger.info(f"Scheduled crawl enabled: every {CRAWL_INTERVAL_MINS} minutes")
+
+
+# ── Background Task Tracker (v3.1 — F3) ─────────────────────────────────────
+
+_tasks: Dict[str, Dict[str, Any]] = {}
+
+def _track_task(task_id: str, status: str = "running", result: Any = None) -> None:
+    _tasks[task_id] = {
+        "task_id": task_id,
+        "status": status,
+        "result": result,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ── Lifespan (v3.1 — replaces deprecated @app.on_event) ─────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application startup and shutdown lifecycle."""
+    logger.info(f"Document AI Pipeline v{__version__} starting...")
+
+    # Load index on startup
+    try:
+        from embedding.vector_store import load_index
+        loaded = load_index()
+        if loaded:
+            stats = pipeline.status()
+            logger.info(
+                f"Index loaded: {stats['total_vectors']} vectors, "
+                f"{stats['unique_sources']} sources"
+            )
+        else:
+            logger.info("No existing index found — ready for first ingestion")
+    except Exception as e:
+        logger.warning(f"Index load skipped: {e}")
+
+    # Start crawl scheduler
+    _start_crawl_scheduler()
+
+    yield
+
+    # Shutdown
+    global _crawl_timer
+    if _crawl_timer:
+        _crawl_timer.cancel()
+    logger.info("Pipeline shutting down...")
+
+
+# ── App Instance ─────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="Document AI + RAG Pipeline",
-    description=(
-        "Upload any document (PDF, Image, Excel, PowerPoint, Word, CSV, text, or web URL) "
-        "and ask questions in plain English. Fully local, private, and powered by Mistral via Ollama."
-    ),
     version=__version__,
-    docs_url=f"/api/{API_VERSION}/docs",
-    redoc_url=f"/api/{API_VERSION}/redoc",
-    openapi_url=f"/api/{API_VERSION}/openapi.json",
+    description="Local-first RAG pipeline with multi-format document ingestion, "
+                "hybrid search, and AI-powered Q&A.",
+    lifespan=lifespan,
 )
 
+# CORS — v3.1: Configurable origins from environment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Pydantic Models
-# ─────────────────────────────────────────────────────────────────────────────
-
-class QueryRequest(BaseModel):
-    question: str = Field(..., min_length=1, max_length=5000, description="Your question in natural language")
-    source_filter: Optional[str] = Field(None, description="Filter to a specific source document")
-    session_id: Optional[str] = Field(None, description="Session ID for persistent chat history")
-    history: Optional[List[Dict[str, str]]] = Field(None, description="Chat history for context")
+# Static files
+if FRONTEND_DIR.exists():
+    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
 
 
-class UrlIngestRequest(BaseModel):
-    url: str = Field(..., min_length=10, description="Web URL to ingest")
-
-    @field_validator("url")
-    @classmethod
-    def validate_url(cls, v: str) -> str:
-        if not v.startswith(("http://", "https://")):
-            raise ValueError("URL must start with http:// or https://")
-        return v
-
-
-class SummarizeRequest(BaseModel):
-    topic: str = Field(default="the document", max_length=500)
-
-
-class ExtractRequest(BaseModel):
-    fields: List[str] = Field(..., min_length=1, description="Field names to extract")
-    context_query: str = Field(default="", max_length=1000)
-
-
-class TableQueryRequest(BaseModel):
-    question: str = Field(..., min_length=1, max_length=2000)
-
-
-class CompareRequest(BaseModel):
-    doc_a: str = Field(..., description="Filename of first document")
-    doc_b: str = Field(..., description="Filename of second document")
-    question: str = Field(default="", description="Specific comparison question")
-
-
-class SessionCreateRequest(BaseModel):
-    title: str = Field(default="Untitled", max_length=200)
-
-
-class SessionMessageRequest(BaseModel):
-    role: str = Field(default="user")
-    content: str = Field(..., min_length=1, max_length=10000)
-    mode: str = Field(default="qa")
-
-
-class SourceResult(BaseModel):
-    source: str
-    page: int
-    excerpt: str
-    score: float
-    chunk_type: str
-
-
-class QueryResponse(BaseModel):
-    answer: str
-    sources: List[SourceResult]
-
-
-def _safe_filename(filename: str) -> str:
-    """Return a safe basename for uploads/downloads or raise 400 for path tricks."""
-    if not filename:
-        raise HTTPException(status_code=400, detail="Filename is required")
-
-    safe_name = Path(filename).name
-    if safe_name != filename or any(sep in filename for sep in ("/", "\\")) or ":" in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    return safe_name
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Middleware: Rate Limiting
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    """Apply rate limiting to all non-static endpoints."""
-    path = request.url.path
-    # Skip static files and health checks
-    if path.startswith("/frontend") or path == "/health" or path == "/":
-        return await call_next(request)
-
-    client_ip = request.client.host if request.client else "unknown"
-    if not rate_limiter.is_allowed(client_ip):
-        return JSONResponse(
-            status_code=429,
-            content={
-                "detail": "Rate limit exceeded. Please try again later.",
-                "remaining": 0,
-                "limit": rate_limiter.max_requests,
-                "window_secs": rate_limiter.window_secs,
-            },
-        )
-
-    response = await call_next(request)
-    # Add rate limit headers
-    response.headers["X-RateLimit-Remaining"] = str(rate_limiter.remaining(client_ip))
-    response.headers["X-RateLimit-Limit"] = str(rate_limiter.max_requests)
-    return response
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Error Handlers
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Error Handlers ───────────────────────────────────────────────────────────
 
 @app.exception_handler(PipelineError)
 async def pipeline_error_handler(request: Request, exc: PipelineError):
-    """Handle all custom pipeline exceptions."""
     status_map = {
-        DocumentNotFoundError: 404,
-        UnsupportedFileTypeError: 400,
-        FileTooLargeError: 413,
-        OllamaNotReachableError: 503,
-        RateLimitExceededError: 429,
+        "DocumentNotFoundError": 404,
+        "UnsupportedFileTypeError": 400,
+        "FileTooLargeError": 413,
+        "RateLimitExceededError": 429,
+        "IndexNotFoundError": 404,
+        "OllamaNotReachableError": 503,
+        "IngestionError": 500,
     }
-    status_code = status_map.get(type(exc), 500)
-    return JSONResponse(status_code=status_code, content={"detail": exc.message})
+    code = status_map.get(type(exc).__name__, 500)
+    return JSONResponse(status_code=code, content={"detail": exc.message})
+
+@app.exception_handler(422)
+async def validation_error_handler(request: Request, exc):
+    return JSONResponse(status_code=422, content={"errors": str(exc)})
 
 
-from fastapi.exceptions import RequestValidationError
+# ── Utility Functions ────────────────────────────────────────────────────────
 
-@app.exception_handler(RequestValidationError)
-async def validation_error_handler(request: Request, exc: RequestValidationError):
-    """Return clean validation error messages."""
-    errors = []
-    for err in exc.errors():
-        field = " → ".join(str(loc) for loc in err["loc"])
-        errors.append({"field": field, "message": err["msg"]})
-    return JSONResponse(status_code=422, content={"errors": errors})
+# Windows reserved filenames
+_WINDOWS_RESERVED = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
+def _safe_filename(name: str) -> str:
+    """
+    Sanitize a filename for safe storage.
+    v3.1: Added Windows reserved name checks and hidden file protection.
+    """
+    name = Path(name).name  # Strip any directory traversal
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', name)  # Remove unsafe chars
+    name = name.strip('. ')  # Remove leading/trailing dots and spaces
+
+    # Block Windows reserved names
+    stem = Path(name).stem.upper()
+    if stem in _WINDOWS_RESERVED:
+        name = f"_{name}"
+
+    # Block hidden files (starting with .)
+    if name.startswith('.'):
+        name = f"_{name}"
+
+    return name or "unnamed_file"
+
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from request."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Startup
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Health & Status Endpoints ────────────────────────────────────────────────
 
-@app.on_event("startup")
-async def on_startup():
-    logger.info(f"Document AI + RAG Pipeline v{__version__} starting up...")
-    info = pipeline.startup()
-    logger.info(f"Startup complete: {info}")
+@app.get("/")
+async def root():
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Static Files + Frontend
-# ─────────────────────────────────────────────────────────────────────────────
-
-app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
-
-
-@app.get("/", include_in_schema=False)
-async def serve_frontend():
-    """Serve the premium web UI."""
-    return FileResponse(FRONTEND_DIR / "index.html")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Health & Status
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.get("/health", tags=["Core"], summary="Health check")
+@app.get("/health")
 async def health():
-    return {
-        "status": "ok",
-        "version": __version__,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
+    return {"status": "ok", "version": __version__}
+
+@app.get("/status")
+async def get_status():
+    return await asyncio.to_thread(pipeline.status)
+
+@app.get("/analytics")
+async def get_analytics():
+    return await asyncio.to_thread(pipeline.get_analytics)
 
 
-@app.get("/status", tags=["Core"], summary="Index statistics + Ollama status")
-async def status():
-    return pipeline.status()
+# ── Document Management ─────────────────────────────────────────────────────
+
+@app.get("/documents")
+async def list_documents():
+    return await asyncio.to_thread(pipeline.list_documents)
+
+@app.delete("/document/{filename}")
+async def delete_document(filename: str):
+    try:
+        return await asyncio.to_thread(pipeline.delete_document, filename)
+    except DocumentNotFoundError as e:
+        raise HTTPException(status_code=404, detail=e.message)
+
+@app.post("/clear")
+async def clear_index():
+    return await asyncio.to_thread(pipeline.clear_index)
 
 
-@app.get("/analytics", tags=["Core"], summary="Detailed storage & document analytics")
-async def analytics():
-    return pipeline.get_analytics()
+# ── Document Ingestion ───────────────────────────────────────────────────────
 
+@app.post("/ingest")
+async def ingest_file(request: Request, file: UploadFile = File(...)):
+    # Rate limit check
+    client_ip = _get_client_ip(request)
+    if not rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Ingestion
-# ─────────────────────────────────────────────────────────────────────────────
+    # Validate filename
+    safe_name = _safe_filename(file.filename or "unnamed")
+    suffix = Path(safe_name).suffix.lower()
 
-@app.post("/ingest", tags=["Ingestion"], summary="Upload a single document")
-async def ingest(file: UploadFile = File(...)):
-    """Ingest a document: PDF, Image, DOCX, Excel, PPTX, CSV, TXT, or Markdown."""
-    suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
-        raise UnsupportedFileTypeError(suffix, ALLOWED_EXTENSIONS)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{suffix}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+        )
 
-    safe_name = _safe_filename(file.filename or "")
+    # Path traversal check
+    if ".." in (file.filename or ""):
+        raise HTTPException(status_code=400, detail="Invalid filename")
 
+    # Read and check size
     content = await file.read()
     size_mb = len(content) / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
-        raise FileTooLargeError(size_mb, MAX_FILE_SIZE_MB)
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large: {size_mb:.1f} MB (max: {MAX_FILE_SIZE_MB} MB)"
+        )
 
-    save_path = UPLOAD_DIR / safe_name
-    with open(save_path, "wb") as f:
-        f.write(content)
+    # Save to disk
+    file_path = UPLOAD_DIR / safe_name
+    file_path.write_bytes(content)
 
+    # Run ingestion in thread pool
     try:
-        result = pipeline.ingest(save_path)
+        result = await asyncio.to_thread(pipeline.ingest, str(file_path), safe_name)
+        return result
     except Exception as e:
-        save_path.unlink(missing_ok=True)
+        logger.error(f"Ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+
+
+@app.post("/ingest/url")
+async def ingest_url(body: UrlIngestRequest):
+    try:
+        return await asyncio.to_thread(pipeline.ingest_url, body.url)
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    return result
 
+@app.post("/ingest/async")
+async def ingest_file_async(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    file: UploadFile = File(...),
+):
+    """
+    v3.1 (F3): Async ingestion — returns immediately with a task ID.
+    Check progress via GET /tasks/{task_id}
+    """
+    import uuid
+    task_id = str(uuid.uuid4())[:12]
 
-@app.post("/ingest/url", tags=["Ingestion"], summary="Ingest a web URL")
-async def ingest_url(req: UrlIngestRequest):
-    """Fetch a web page, extract text, and index it."""
-    try:
-        result = pipeline.ingest_url(req.url)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    return result
+    safe_name = _safe_filename(file.filename or "unnamed")
+    suffix = Path(safe_name).suffix.lower()
 
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type '{suffix}'")
 
-@app.post("/ingest/batch", tags=["Ingestion"], summary="Upload multiple documents at once")
-async def ingest_batch(files: List[UploadFile] = File(...)):
-    """Batch upload and ingest multiple documents."""
-    results = []
-    for file in files:
-        suffix = Path(file.filename or "").suffix.lower()
-        if suffix not in ALLOWED_EXTENSIONS:
-            results.append({"file": file.filename, "error": f"Unsupported type: {suffix}"})
-            continue
+    content = await file.read()
+    file_path = UPLOAD_DIR / safe_name
+    file_path.write_bytes(content)
 
+    def run_ingest():
+        _track_task(task_id, "running")
         try:
-            safe_name = _safe_filename(file.filename or "")
-        except HTTPException as exc:
-            results.append({"file": file.filename, "error": exc.detail})
-            continue
-
-        content = await file.read()
-        size_mb = len(content) / (1024 * 1024)
-        if size_mb > MAX_FILE_SIZE_MB:
-            results.append({"file": file.filename, "error": f"Too large: {size_mb:.1f} MB"})
-            continue
-
-        save_path = UPLOAD_DIR / safe_name
-        with open(save_path, "wb") as f:
-            f.write(content)
-
-        try:
-            result = pipeline.ingest(save_path)
-            results.append(result)
+            result = pipeline.ingest(str(file_path), safe_name)
+            _track_task(task_id, "completed", result)
         except Exception as e:
-            save_path.unlink(missing_ok=True)
-            results.append({"file": file.filename, "error": str(e)})
+            _track_task(task_id, "failed", {"error": str(e)})
 
+    background_tasks.add_task(run_ingest)
+    _track_task(task_id, "queued")
+
+    return {"task_id": task_id, "status": "queued", "filename": safe_name}
+
+
+@app.get("/tasks/{task_id}")
+async def get_task_status(task_id: str):
+    """Get the status of an async task."""
+    task = _tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+# ── Query Endpoints ──────────────────────────────────────────────────────────
+
+@app.post("/query")
+async def query_endpoint(body: QueryRequest, request: Request):
+    client_ip = _get_client_ip(request)
+    if not rate_limiter.is_allowed(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    if not check_ollama_connection():
+        # Allow demo mode to still work
+        pass
+
+    # Check cache
+    cached = query_cache.get(body.question, "qa", body.source_filter or "")
+    if cached:
+        try:
+            from features.query_analytics import query_analytics
+            query_analytics.record_query(body.question, "qa", 0, cached=True)
+        except Exception:
+            pass
+        return cached
+
+    # Get chat history if session provided
+    history = None
+    if body.session_id:
+        try:
+            history = session_manager.get_chat_history(body.session_id)
+        except Exception:
+            pass
+
+    result = await asyncio.to_thread(
+        pipeline.query, body.question, body.source_filter, history
+    )
+
+    # Store in session
+    if body.session_id:
+        try:
+            session_manager.add_message(body.session_id, "user", body.question)
+            session_manager.add_message(
+                body.session_id, "assistant",
+                result.get("answer", ""),
+                sources=result.get("sources"),
+            )
+        except Exception as e:
+            logger.warning(f"Session save failed: {e}")
+
+    # Cache
+    query_cache.put(result, body.question, "qa", body.source_filter or "")
+
+    return result
+
+
+@app.post("/query-stream")
+async def query_stream(body: QueryRequest):
+    """SSE streaming endpoint for real-time query responses."""
+    from llm.prompt_chains import stream_answer_question
+
+    candidates = await asyncio.to_thread(
+        pipeline._search, body.question, source_filter=body.source_filter
+    )
+
+    if not candidates:
+        async def empty_stream():
+            yield f"data: {json.dumps({'delta': 'No relevant documents found.'})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(empty_stream(), media_type="text/event-stream")
+
+    reranked = await asyncio.to_thread(pipeline._rerank, body.question, candidates)
+
+    sources = [
+        {"source": r.source, "page": r.page_num, "excerpt": r.text[:300],
+         "score": round(r.score, 4), "chunk_type": r.chunk_type}
+        for r in reranked
+    ]
+
+    history = None
+    if body.session_id:
+        try:
+            history = session_manager.get_chat_history(body.session_id)
+        except Exception:
+            pass
+
+    async def event_generator():
+        yield f"data: {json.dumps({'sources': sources})}\n\n"
+
+        full_answer = ""
+        async for token in stream_answer_question(body.question, reranked, history):
+            full_answer += token
+            yield f"data: {json.dumps({'delta': token})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+        # Save to session
+        if body.session_id:
+            try:
+                session_manager.add_message(body.session_id, "user", body.question)
+                session_manager.add_message(
+                    body.session_id, "assistant", full_answer, sources=sources
+                )
+            except Exception:
+                pass
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# ── Semantic Search (v3.1 — F7) ──────────────────────────────────────────────
+
+@app.post("/search")
+async def semantic_search(body: SearchRequest):
+    """Raw semantic search without LLM generation."""
+    results = await asyncio.to_thread(
+        pipeline.semantic_search, body.query, body.top_k, body.source_filter
+    )
+    return {"results": results, "total": len(results), "query": body.query}
+
+
+# ── Batch Q&A (v3.1 — F14) ───────────────────────────────────────────────────
+
+@app.post("/query/batch")
+async def batch_query(body: BatchQueryRequest):
+    """Answer multiple questions in batch."""
+    results = await asyncio.to_thread(
+        pipeline.batch_query, body.questions, body.source_filter
+    )
     return {"results": results, "total": len(results)}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Query & AI
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Intelligence Endpoints ───────────────────────────────────────────────────
 
-@app.post("/query", tags=["Query"], summary="Ask a question (sync)", response_model=QueryResponse)
-async def query_endpoint(req: QueryRequest):
-    """Ask a question about your documents. Returns answer with source citations."""
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
+@app.post("/summarize")
+async def summarize(body: SummarizeRequest):
+    return await asyncio.to_thread(pipeline.get_summary, body.topic, body.source_filter)
 
-    if req.session_id and not session_manager.get_session(req.session_id):
-        raise HTTPException(status_code=404, detail=f"Session '{req.session_id}' not found")
+@app.post("/extract")
+async def extract_fields(body: ExtractRequest):
+    if not body.fields:
+        raise HTTPException(status_code=422, detail="Fields list cannot be empty")
+    return await asyncio.to_thread(pipeline.extract, body.fields, body.context_query)
 
-    # Get history from session if provided
-    history = req.history
-    if req.session_id and not history:
-        history = session_manager.get_chat_history(req.session_id)
+@app.post("/table-query")
+async def table_query(body: TableQueryRequest):
+    return await asyncio.to_thread(pipeline.query_table, body.question, body.source_filter)
 
-    result = pipeline.query(
-        req.question,
-        source_filter=req.source_filter,
-        history=history,
+@app.post("/compare")
+async def compare_documents(body: CompareRequest):
+    result = await asyncio.to_thread(
+        pipeline.compare_documents, body.doc_a, body.doc_b, body.question
+    )
+    # Compatibility alias for frontend
+    result["comparison"] = result.get("analysis", "")
+    return result
+
+
+# ── Export / Import (v3.1 — F5) ──────────────────────────────────────────────
+
+@app.get("/export")
+async def export_index():
+    """Download the index as a zip file."""
+    zip_bytes = await asyncio.to_thread(pipeline.export_index_zip)
+    return StreamingResponse(
+        io.BytesIO(zip_bytes),
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="docuai_index.zip"'},
     )
 
-    # Save to session if provided
-    if req.session_id:
-        session_manager.add_message(req.session_id, "user", req.question, mode="qa")
-        session_manager.add_message(
-            req.session_id, "assistant", result["answer"],
-            sources=result.get("sources", []), mode="qa",
-        )
+@app.post("/import")
+async def import_index(file: UploadFile = File(...)):
+    """Import an index from a zip file."""
+    content = await file.read()
+    try:
+        result = await asyncio.to_thread(pipeline.import_index_zip, content)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
 
+
+# ── Document Versioning (v3.1 — F2) ──────────────────────────────────────────
+
+@app.get("/versions")
+async def get_all_versions():
+    """Get version history for all documents."""
+    return await asyncio.to_thread(pipeline.get_all_versions)
+
+@app.get("/versions/{filename}")
+async def get_document_versions(filename: str):
+    """Get version history for a specific document."""
+    versions = await asyncio.to_thread(pipeline.get_document_versions, filename)
+    return {"filename": filename, "versions": versions}
+
+
+# ── Scheduled Crawl (v3.1 — F9) ──────────────────────────────────────────────
+
+@app.get("/crawl/urls")
+async def list_crawl_urls():
+    return {"urls": pipeline.get_crawl_urls(), "enabled": CRAWL_ENABLED}
+
+@app.post("/crawl/add")
+async def add_crawl_url(body: CrawlUrlRequest):
+    pipeline.add_crawl_url(body.url)
+    return {"status": "added", "url": body.url, "total": len(pipeline.get_crawl_urls())}
+
+@app.post("/crawl/remove")
+async def remove_crawl_url(body: CrawlUrlRequest):
+    pipeline.remove_crawl_url(body.url)
+    return {"status": "removed", "url": body.url}
+
+@app.post("/crawl/run")
+async def run_crawl_now():
+    """Manually trigger a scheduled crawl."""
+    result = await asyncio.to_thread(pipeline.run_scheduled_crawl)
     return result
 
 
-@app.post("/query-stream", tags=["Query"], summary="Ask a question (streaming SSE)")
-async def query_stream(req: QueryRequest):
-    """
-    Streaming Server-Sent Events endpoint for real-time answer generation.
-    Returns chunks of the answer as they are generated by the LLM.
-    """
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
+# ── Query Analytics (v3.1 — F10) ─────────────────────────────────────────────
 
-    if req.session_id and not session_manager.get_session(req.session_id):
-        raise HTTPException(status_code=404, detail=f"Session '{req.session_id}' not found")
+@app.get("/query-analytics")
+async def get_query_analytics():
+    from features.query_analytics import query_analytics
+    return query_analytics.get_stats()
 
-    # Get relevant chunks
-    results = pipeline.get_relevant_chunks(req.question, source_filter=req.source_filter)
-
-    history = req.history
-    if req.session_id and not history:
-        history = session_manager.get_chat_history(req.session_id)
-
-    async def event_stream():
-        sources_payload = []
-        answer_parts: List[str] = []
-
-        async for chunk in stream_answer_question(req.question, results, history=history):
-            yield chunk
-            if not chunk.startswith("data: "):
-                continue
-
-            payload_text = chunk[6:].strip()
-            if payload_text == "[DONE]":
-                continue
-
-            try:
-                payload = json.loads(payload_text)
-            except json.JSONDecodeError:
-                continue
-
-            if isinstance(payload.get("sources"), list):
-                sources_payload = payload["sources"]
-            delta = payload.get("delta")
-            if delta:
-                answer_parts.append(delta)
-
-        if req.session_id and answer_parts:
-            session_manager.add_message(req.session_id, "user", req.question, mode="qa")
-            session_manager.add_message(
-                req.session_id,
-                "assistant",
-                "".join(answer_parts).strip(),
-                sources=sources_payload,
-                mode="qa",
-            )
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+@app.post("/query-analytics/clear")
+async def clear_query_analytics():
+    from features.query_analytics import query_analytics
+    count = query_analytics.clear()
+    return {"cleared": count}
 
 
-@app.post("/summarize", tags=["Query"], summary="Summarize documents by topic")
-async def summarize_endpoint(req: SummarizeRequest):
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
-    return pipeline.get_summary(req.topic)
+# ── Session Endpoints ────────────────────────────────────────────────────────
 
+@app.get("/sessions")
+async def list_sessions():
+    return session_manager.list_sessions()
 
-@app.post("/extract", tags=["Query"], summary="Extract structured fields as JSON")
-async def extract_endpoint(req: ExtractRequest):
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
-    result = pipeline.extract(req.fields, req.context_query)
-    if "fields" in result and "extracted_data" not in result:
-        result["extracted_data"] = result["fields"]
-    return result
+@app.post("/sessions")
+async def create_session(body: SessionCreate):
+    return session_manager.create_session(body.title)
 
-
-@app.post("/table-query", tags=["Query"], summary="Ask about tables in documents")
-async def table_query_endpoint(req: TableQueryRequest):
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
-    return pipeline.query_table(req.question)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Document Comparison (v3.0)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.post("/compare", tags=["Comparison"], summary="Compare two documents")
-async def compare_documents(req: CompareRequest):
-    """Compare two documents and get analysis of similarities, differences, and unique content."""
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
-    result = pipeline.compare_documents(req.doc_a, req.doc_b, req.question)
-    if "analysis" in result and "comparison" not in result:
-        result["comparison"] = result["analysis"]
-    return result
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Sessions (v3.0)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.post("/sessions", tags=["Sessions"], summary="Create a new chat session")
-async def create_session(req: SessionCreateRequest):
-    return session_manager.create_session(req.title)
-
-
-@app.get("/sessions", tags=["Sessions"], summary="List recent chat sessions")
-async def list_sessions(limit: int = 50):
-    return session_manager.list_sessions(limit)
-
-
-@app.get("/sessions/{session_id}", tags=["Sessions"], summary="Get session details")
+@app.get("/sessions/{session_id}")
 async def get_session(session_id: str):
     session = session_manager.get_session(session_id)
     if not session:
-        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+        raise HTTPException(status_code=404, detail="Session not found")
     return session
 
-
-@app.get("/sessions/{session_id}/messages", tags=["Sessions"], summary="Get messages in a session")
-async def get_messages(session_id: str, limit: int = 100):
+@app.get("/sessions/{session_id}/messages")
+async def get_messages(session_id: str, limit: int = Query(100, ge=1, le=500)):
     return session_manager.get_messages(session_id, limit)
 
-
-@app.post("/sessions/{session_id}/messages", tags=["Sessions"], summary="Add a message to a session")
-async def add_message(session_id: str, req: SessionMessageRequest):
-    try:
-        return session_manager.add_message(session_id, req.role, req.content, mode=req.mode)
-    except ValueError:
-        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
-
-
-@app.delete("/sessions/{session_id}", tags=["Sessions"], summary="Delete a session")
+@app.delete("/sessions/{session_id}")
 async def delete_session(session_id: str):
-    if not session_manager.delete_session(session_id):
-        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    deleted = session_manager.delete_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "deleted"}
 
 
-@app.get("/sessions-stats", tags=["Sessions"], summary="Get session statistics")
-async def session_stats():
-    return session_manager.get_stats()
+# ── Cache Endpoints ──────────────────────────────────────────────────────────
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Knowledge Graph (v3.0)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.get("/knowledge-graph", tags=["Knowledge Graph"], summary="Get full knowledge graph data")
-async def get_knowledge_graph():
-    if not KNOWLEDGE_GRAPH_ENABLED:
-        raise HTTPException(status_code=404, detail="Knowledge graph is disabled")
-    from features.knowledge_graph import knowledge_graph
-    return knowledge_graph.get_graph_data()
-
-
-@app.get("/knowledge-graph/entities", tags=["Knowledge Graph"], summary="Search entities")
-async def search_entities(query: str = "", entity_type: str = "", limit: int = 50):
-    if not KNOWLEDGE_GRAPH_ENABLED:
-        raise HTTPException(status_code=404, detail="Knowledge graph is disabled")
-    from features.knowledge_graph import knowledge_graph
-    return knowledge_graph.search_entities(query, entity_type, limit)
-
-
-@app.get("/knowledge-graph/entity/{name}", tags=["Knowledge Graph"], summary="Get entity details")
-async def get_entity(name: str):
-    if not KNOWLEDGE_GRAPH_ENABLED:
-        raise HTTPException(status_code=404, detail="Knowledge graph is disabled")
-    from features.knowledge_graph import knowledge_graph
-    entity = knowledge_graph.get_entity(name)
-    if entity is None:
-        raise HTTPException(status_code=404, detail=f"Entity '{name}' not found")
-    return entity
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PDF Annotation (v3.0)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.post("/annotate", tags=["PDF Annotation"], summary="Create annotated PDF with highlighted sources")
-async def annotate_pdf(req: QueryRequest):
-    """Answer a question and create an annotated PDF highlighting the source passages."""
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
-
-    result = pipeline.query(req.question)
-    sources = result.get("sources", [])
-
-    from features.pdf_annotator import annotate_from_sources
-    annotated = annotate_from_sources(sources)
-
-    return {
-        "answer": result["answer"],
-        "sources": sources,
-        "annotated_pdfs": annotated,
-    }
-
-
-@app.get("/annotated", tags=["PDF Annotation"], summary="List all annotated PDFs")
-async def list_annotated():
-    from features.pdf_annotator import list_annotated
-    return list_annotated()
-
-
-@app.get("/annotated/{filename}", tags=["PDF Annotation"], summary="Download an annotated PDF")
-async def download_annotated(filename: str):
-    from config import ANNOTATED_PDF_DIR
-    safe_name = _safe_filename(filename)
-    file_path = ANNOTATED_PDF_DIR / safe_name
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"Annotated PDF '{filename}' not found")
-    return FileResponse(str(file_path), media_type="application/pdf", filename=safe_name)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# WebSocket Collaboration (v3.0)
-# ─────────────────────────────────────────────────────────────────────────────
-
-if WS_ENABLED:
-    from features.collaboration import collab_manager
-
-    @app.websocket("/ws/{room_id}")
-    async def websocket_endpoint(websocket: WebSocket, room_id: str, username: str = "Anonymous"):
-        """Real-time collaboration via WebSocket."""
-        ws_id = await collab_manager.connect(websocket, room_id, username)
-        try:
-            while True:
-                data = await websocket.receive_json()
-                msg_type = data.get("type", "message")
-
-                if msg_type == "query":
-                    # Broadcast query to room
-                    await collab_manager.broadcast(room_id, {
-                        "type": "user_query",
-                        "user": username,
-                        "question": data.get("question", ""),
-                        "timestamp": datetime.utcnow().isoformat(),
-                    })
-
-                    # Process query
-                    if check_ollama_connection():
-                        result = pipeline.query(data.get("question", ""))
-                        await collab_manager.broadcast(room_id, {
-                            "type": "answer",
-                            "user": "AI",
-                            "answer": result.get("answer", ""),
-                            "sources": result.get("sources", []),
-                            "timestamp": datetime.utcnow().isoformat(),
-                        })
-
-                elif msg_type == "message":
-                    await collab_manager.broadcast(room_id, {
-                        "type": "chat_message",
-                        "user": username,
-                        "content": data.get("content", ""),
-                        "timestamp": datetime.utcnow().isoformat(),
-                    }, exclude=ws_id)
-
-                elif msg_type == "get_users":
-                    users = collab_manager.get_room_users(room_id)
-                    await collab_manager.send_to(ws_id, {
-                        "type": "users_list",
-                        "users": users,
-                    })
-
-        except WebSocketDisconnect:
-            collab_manager.disconnect(ws_id)
-            await collab_manager.broadcast(room_id, {
-                "type": "user_left",
-                "user": username,
-                "timestamp": datetime.utcnow().isoformat(),
-            })
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Cache Management (v3.0)
-# ─────────────────────────────────────────────────────────────────────────────
-
-@app.get("/cache/stats", tags=["Cache"], summary="Get cache statistics")
+@app.get("/cache/stats")
 async def cache_stats():
     return query_cache.stats()
 
-
-@app.post("/cache/clear", tags=["Cache"], summary="Clear the query cache")
-async def cache_clear():
+@app.post("/cache/clear")
+async def clear_cache():
     count = query_cache.invalidate()
-    return {"status": "cache cleared", "entries_removed": count}
+    return {"entries_removed": count}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Document Management
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Knowledge Graph Endpoints ────────────────────────────────────────────────
 
-@app.get("/download/{filename}", tags=["Management"], summary="Download a raw document")
-async def download_document(filename: str):
-    safe_name = _safe_filename(filename)
-    file_path = UPLOAD_DIR / safe_name
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(str(file_path))
+@app.get("/knowledge-graph")
+async def get_knowledge_graph():
+    from features.knowledge_graph import knowledge_graph
+    return knowledge_graph.get_graph_data()
 
-@app.post("/clear", tags=["Management"], summary="Clear the entire index")
-async def clear():
-    return pipeline.clear_index()
+@app.get("/knowledge-graph/search")
+async def search_kg(q: str = "", entity_type: str = "", limit: int = 50):
+    from features.knowledge_graph import knowledge_graph
+    return knowledge_graph.search_entities(q, entity_type, limit)
 
-
-@app.delete("/document/{filename}", tags=["Management"], summary="Delete a specific document")
-async def delete_document(filename: str):
-    try:
-        return pipeline.delete_document(_safe_filename(filename))
-    except DocumentNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Document '{filename}' not found in index")
+@app.post("/knowledge-graph/reset")
+async def reset_kg():
+    from features.knowledge_graph import knowledge_graph
+    knowledge_graph.reset()
+    return {"status": "knowledge graph cleared"}
 
 
-@app.get("/documents", tags=["Management"], summary="List all uploaded documents")
-async def list_documents():
-    """List all documents in the uploads directory."""
-    if not UPLOAD_DIR.exists():
-        return []
-    
-    docs = []
-    for f in sorted(UPLOAD_DIR.iterdir()):
-        if f.is_file():
-            docs.append({
-                "filename": f.name,
-                "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
-                "suffix": f.suffix.lower(),
-                "modified": datetime.fromtimestamp(f.stat().st_mtime).isoformat(),
-            })
-    return docs
+# ── Evaluation Endpoints ─────────────────────────────────────────────────────
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# RAGAS Evaluation Dashboard (v3.0)
-# ─────────────────────────────────────────────────────────────────────────────
-
-class EvalRequest(BaseModel):
-    question: str = Field(..., min_length=1)
-    answer: str = Field(..., min_length=1)
-    contexts: List[str] = Field(..., min_length=1)
-    run_all: bool = Field(default=True, description="Run all 4 metrics (slower)")
-
-
-@app.post("/evaluate", tags=["Evaluation"], summary="Run RAGAS evaluation on a Q&A pair")
-async def evaluate_qa(req: EvalRequest):
-    """
-    Evaluate the quality of a Q&A interaction using RAGAS metrics:
-    faithfulness, answer relevancy, context precision, context recall.
-    """
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
-
-    from features.evaluation import evaluator
-    result = evaluator.evaluate(
-        question=req.question,
-        answer=req.answer,
-        contexts=req.contexts,
-        run_all=req.run_all,
-    )
-    return asdict(result)
-
-
-@app.post("/evaluate/auto", tags=["Evaluation"], summary="Query + auto-evaluate in one call")
-async def evaluate_auto(req: QueryRequest):
-    """Ask a question and automatically evaluate the answer quality."""
-    if not check_ollama_connection():
-        raise OllamaNotReachableError("configured URL")
-
-    # Run query
-    result = pipeline.query(req.question, source_filter=req.source_filter)
-    contexts = [s.get("excerpt", "") for s in result.get("sources", [])]
-
-    # Run evaluation
-    from features.evaluation import evaluator
-    eval_result = evaluator.evaluate(
-        question=req.question,
-        answer=result["answer"],
-        contexts=contexts,
+@app.post("/evaluate")
+async def evaluate_query(body: QueryRequest):
+    """Run RAGAS evaluation on a query."""
+    result = await asyncio.to_thread(
+        pipeline.query, body.question, body.source_filter
     )
 
-    return {
-        "answer": result["answer"],
-        "sources": result["sources"],
-        "evaluation": asdict(eval_result),
-    }
+    from features.evaluation import evaluator
+    contexts = [s["excerpt"] for s in result.get("sources", [])]
+    eval_result = await asyncio.to_thread(
+        evaluator.evaluate,
+        body.question,
+        result.get("answer", ""),
+        contexts,
+    )
 
+    from dataclasses import asdict
+    return {**result, "evaluation": asdict(eval_result)}
 
-@app.get("/evaluate/dashboard", tags=["Evaluation"], summary="RAGAS dashboard statistics")
-async def eval_dashboard():
-    """Get aggregate RAGAS evaluation statistics and trend data."""
+@app.get("/evaluate/dashboard")
+async def evaluation_dashboard():
     from features.evaluation import evaluator
     return evaluator.get_dashboard_stats()
 
-
-@app.get("/evaluate/history", tags=["Evaluation"], summary="Evaluation history")
-async def eval_history(limit: int = 50):
-    """Get recent evaluation results."""
+@app.get("/evaluate/history")
+async def evaluation_history(limit: int = Query(50, ge=1, le=200)):
     from features.evaluation import evaluator
     return evaluator.get_history(limit)
 
-
-@app.post("/evaluate/clear", tags=["Evaluation"], summary="Clear evaluation history")
-async def eval_clear():
+@app.post("/evaluate/clear")
+async def clear_evaluations():
     from features.evaluation import evaluator
     count = evaluator.clear_history()
-    return {"status": "cleared", "entries_removed": count}
+    return {"cleared": count}
 
+
+# ── PDF Annotation ───────────────────────────────────────────────────────────
+
+@app.post("/annotate")
+async def annotate_pdf(body: QueryRequest):
+    """Generate annotated PDF with highlighted source passages."""
+    result = await asyncio.to_thread(
+        pipeline.query, body.question, body.source_filter
+    )
+    sources = result.get("sources", [])
+    if not sources:
+        return {"annotated_files": {}, "answer": result.get("answer", "")}
+
+    from features.pdf_annotator import annotate_from_sources
+    annotated = await asyncio.to_thread(annotate_from_sources, sources)
+
+    return {
+        "annotated_files": annotated,
+        "answer": result.get("answer", ""),
+        "sources": sources,
+    }
+
+@app.get("/annotated")
+async def list_annotated():
+    from features.pdf_annotator import list_annotated as _list
+    return _list()
+
+@app.get("/annotated/{filename}")
+async def download_annotated(filename: str):
+    path = ANNOTATED_PDF_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Annotated PDF not found")
+    return FileResponse(str(path), filename=filename)
+
+
+# ── File Download ────────────────────────────────────────────────────────────
+
+@app.get("/download/{filename}")
+async def download_file(filename: str):
+    path = UPLOAD_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(str(path), filename=filename)
+
+
+# ── WebSocket Collaboration ──────────────────────────────────────────────────
+
+@app.websocket("/ws/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str = "default"):
+    if not WS_ENABLED:
+        await websocket.close(code=1008, reason="WebSocket disabled")
+        return
+
+    from features.collaboration import collab_manager
+
+    username = websocket.query_params.get("username", "Anonymous")
+    ws_id = await collab_manager.connect(websocket, room_id, username)
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+
+            # v3.1 (S6): Validate and limit WebSocket input
+            msg_type = str(data.get("type", ""))[:50]
+            question = str(data.get("question", ""))[:2000]
+
+            if msg_type == "query" and question:
+                # Broadcast the question
+                await collab_manager.broadcast(room_id, {
+                    "type": "user_query",
+                    "user": username,
+                    "question": question,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+
+                # Run query in thread pool (v3.1: fix event loop blocking)
+                try:
+                    result = await asyncio.to_thread(pipeline.query, question)
+                    await collab_manager.broadcast(room_id, {
+                        "type": "query_result",
+                        "user": username,
+                        "question": question,
+                        "answer": result.get("answer", ""),
+                        "sources": result.get("sources", []),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                except Exception as e:
+                    await collab_manager.send_to(ws_id, {
+                        "type": "error",
+                        "message": str(e),
+                    })
+
+    except WebSocketDisconnect:
+        collab_manager.disconnect(ws_id)
+        await collab_manager.broadcast(room_id, {
+            "type": "user_left",
+            "user": username,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })

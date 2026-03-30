@@ -1,7 +1,7 @@
 # features/collaboration.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Real-time WebSocket collaboration — multi-user Q&A sessions.
-# Allows multiple users to ask questions and see each other's queries/answers.
+# v3.1 — Fixed datetime.utcnow(), added room cleanup for stale connections
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Set
 
 from loguru import logger
@@ -43,7 +43,7 @@ class ConnectionManager:
             "type": "user_joined",
             "user": username,
             "users_count": len(self._rooms[room_id]),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }, exclude=ws_id)
 
         return ws_id
@@ -53,9 +53,13 @@ class ConnectionManager:
         username = self._usernames.pop(ws_id, "Unknown")
         self._active.pop(ws_id, None)
 
-        for room_id, members in self._rooms.items():
+        for room_id, members in list(self._rooms.items()):
             if ws_id in members:
                 members.discard(ws_id)
+                # v3.1: Clean up empty rooms
+                if not members:
+                    del self._rooms[room_id]
+                    logger.info(f"Room {room_id} cleaned up (empty)")
                 logger.info(f"WS disconnected: {ws_id} ({username}) from room {room_id}")
                 break
 
@@ -103,6 +107,23 @@ class ConnectionManager:
             },
             "enabled": WS_ENABLED,
         }
+
+    async def cleanup_stale(self) -> int:
+        """Remove stale/dead connections. Returns count removed."""
+        stale = []
+        for ws_id, ws in list(self._active.items()):
+            try:
+                # Try sending a ping — if it fails, the connection is dead
+                await ws.send_json({"type": "ping"})
+            except Exception:
+                stale.append(ws_id)
+
+        for ws_id in stale:
+            self.disconnect(ws_id)
+
+        if stale:
+            logger.info(f"Cleaned up {len(stale)} stale WebSocket connections")
+        return len(stale)
 
 
 # Module-level singleton

@@ -1,11 +1,11 @@
-# 📄 DocuAI Studio V3
+# 📄 DocuAI Studio v3.1
 
 > Upload any document (PDF, image, DOCX, XLSX, PowerPoint, CSV, text, or web URL) and ask questions in plain English.
-> Fully local, private, and powered by Mistral via Ollama.
+> Fully local, private, and powered by Mistral via Ollama — with optional OpenAI support.
 
 <!-- Status Badges -->
 
-![Version](https://img.shields.io/badge/Version-3.0.0-blueviolet?style=flat-square)
+![Version](https://img.shields.io/badge/Version-3.1.0-blueviolet?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -16,9 +16,10 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-LCEL-1C3C3C?style=flat-square&logo=langchain&logoColor=white)
 ![Ollama](https://img.shields.io/badge/LLM-Mistral_via_Ollama-black?style=flat-square)
+![OpenAI](https://img.shields.io/badge/LLM-OpenAI_Support-412991?style=flat-square&logo=openai&logoColor=white)
 ![FAISS](https://img.shields.io/badge/Vector_Store-FAISS-3B5998?style=flat-square&logo=meta&logoColor=white)
 ![PaddleOCR](https://img.shields.io/badge/OCR-PaddleOCR-2B6CB0?style=flat-square)
-![BM25](https://img.shields.io/badge/Search-Hybrid_(FAISS+BM25)-orange?style=flat-square)
+![BM25](https://img.shields.io/badge/Search-Hybrid_(FAISS+BM25+RRF)-orange?style=flat-square)
 ![SentenceTransformers](https://img.shields.io/badge/Embeddings-MiniLM--L6--v2-yellow?style=flat-square)
 ![CrossEncoder](https://img.shields.io/badge/Reranker-Cross--Encoder-red?style=flat-square)
 ![SQLite](https://img.shields.io/badge/Sessions-SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
@@ -27,22 +28,28 @@
 
 ---
 
-## ✨ What's New in v3.0
+## ✨ What's New in v3.1
 
-| Feature                              | Description                                                      |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| 📊**Excel/CSV/PPTX Support**   | Parse spreadsheets and presentations natively                    |
-| 💬**Persistent Chat Sessions** | SQLite-backed conversation persistence across browsers           |
-| ⚡**Query Caching (LRU)**      | TTL-based cache avoids redundant LLM calls                       |
-| 🔗**Knowledge Graph**          | Entity extraction + relationship mapping with visualization data |
-| 📄**PDF Annotation Export**    | Highlighted source passages in downloadable PDFs                 |
-| 🔍**Document Comparison**      | Side-by-side analysis of two documents                           |
-| 🌐**Real-time Collaboration**  | WebSocket multi-user Q&A in shared rooms                         |
-| 🛡️**Rate Limiting**          | Sliding-window rate limiter per client IP                        |
-| 🎯**Source-Filtered Queries**  | Target Q&A to a specific document                                |
-| 🧠**Conversational Memory**    | Full chat history for both sync and streaming modes              |
-| 🔧**Custom Exceptions**        | Structured error hierarchy for clean API responses               |
-| 📝**Structured JSON Logging**  | Production-ready log format option                               |
+| Feature                                | Description                                                                |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| 🔧 **Thread-Safe Vector Store**        | Fixed FAISS race conditions with proper locking                           |
+| ⚡ **Reciprocal Rank Fusion (RRF)**    | Accurate hybrid scoring between FAISS and BM25 instead of zero-insertion  |
+| 🤖 **OpenAI Provider Support**         | Switchable LLM backend — Ollama (default) or OpenAI via `LLM_PROVIDER`   |
+| 🧠 **Enhanced Demo Mode**              | Intelligent offline answers using keyword extraction & entity analysis     |
+| 🔍 **Semantic Search**                 | Dedicated search endpoint returning ranked passages without LLM overhead  |
+| 📑 **Batch Q&A**                       | Submit multiple questions at once, export results as CSV                   |
+| 📊 **Query Analytics Dashboard**       | Track query frequency, response times, popular documents, failure rates   |
+| 📦 **Export / Import Index**           | Download and restore complete FAISS index as `.zip` for backup/migration  |
+| 📄 **Document Versioning**             | Track upload history with version numbers and diff metadata               |
+| ⏰ **Scheduled Web Crawling**          | Background thread auto-refreshes web URL sources on configurable interval |
+| 🕸️ **Knowledge Graph Canvas**         | Interactive canvas-based entity graph visualization in the browser        |
+| 📱 **Mobile Sidebar Toggle**           | Responsive design with collapsible sidebar overlay for mobile screens     |
+| 📝 **Markdown Rendering**             | Full markdown rendering in chat (tables, code, headers) via `marked.js`  |
+| 🔄 **Async Ingestion**                | Non-blocking document processing with task status tracking                |
+| 🛡️ **Security Hardening**            | Windows reserved names, hidden file protection, WebSocket input limits   |
+| 🚀 **Lazy Module Loading**            | Heavy deps loaded only when needed — faster cold starts                   |
+
+See the full [CHANGELOG](CHANGELOG.md) for details.
 
 ---
 
@@ -51,11 +58,11 @@
 RAG (Retrieval-Augmented Generation) lets an AI answer questions about your specific documents. Instead of guessing from training data, it:
 
 1. **Reads and indexes** your documents (text extraction + semantic embedding).
-2. **Finds the most relevant passages** when you ask a question (FAISS + BM25 + reranking).
-3. **Feeds those passages to Mistral 7B** as context.
+2. **Finds the most relevant passages** when you ask a question (FAISS + BM25 + Reciprocal Rank Fusion).
+3. **Feeds those passages to an LLM** (Mistral 7B via Ollama, or GPT via OpenAI) as context.
 4. **Writes a grounded answer** with citations to your actual documents.
 
-Nothing leaves your machine. No API keys. No cloud.
+**Demo Mode**: When Ollama is offline, the system gracefully falls back to heuristic-based answers using keyword extraction, entity analysis, and structured data parsing — no LLM required.
 
 ---
 
@@ -63,39 +70,38 @@ Nothing leaves your machine. No API keys. No cloud.
 
 ```
                     ┌──────────────────────────────────────────────────┐
-                    │          Frontend (HTML/CSS/JS)                   │
-                    │  Upload · Chat · Summary · Extract · Compare     │
-                    │  Knowledge Graph · Analytics · Collaboration     │
+                    │          Frontend (HTML/CSS/JS + marked.js)       │
+                    │  Chat · Search · Batch · KG · Analytics · Upload │
                     └─────────────────┬────────────────────────────────┘
                                       │
                     ┌─────────────────▼────────────────────────────────┐
-                    │        FastAPI REST + WebSocket Server            │
-                    │  30+ endpoints · Rate limiting · Sessions        │
+                    │  FastAPI REST + WebSocket Server (Lifespan)       │
+                    │  40+ endpoints · Async ops · Rate limiting        │
                     └─────────────────┬────────────────────────────────┘
                                       │
     ┌─────────┬───────────┬──────────┼──────────┬──────────┬──────────┐
     │ Stage 1 │  Stage 2  │ Stage 3  │  Stage 4 │ Stage 5  │ Features │
-    │  LOAD   │  CHUNK    │ EMBED    │ RETRIEVE │ ANSWER   │  v3.0    │
+    │  LOAD   │  CHUNK    │ EMBED    │ RETRIEVE │ ANSWER   │  v3.1    │
     ├─────────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-    │ PyMuPDF │ Sentence  │ MiniLM   │ Hybrid   │ Mistral  │ Sessions │
-    │ Paddle  │ Unicode   │ FAISS    │ FAISS+   │ 7B via   │ Cache    │
-    │ OCR     │ Table-    │ GPU-     │ BM25     │ Ollama   │ KGraph   │
-    │ openpyxl│ Atomic    │ aware    │ Cross-   │ LCEL     │ Compare  │
-    │ pptx    │ Dedup     │ Index    │ Encoder  │ Stream   │ Annotate │
-    │ BS4     │ SHA-256   │ Save     │ Rerank   │ History  │ WS/Collab│
+    │ PyMuPDF │ Sentence  │ MiniLM   │ Hybrid   │ Ollama / │ Versions │
+    │ Paddle  │ Unicode   │ FAISS    │ FAISS+   │ OpenAI   │ BatchQA  │
+    │ OCR     │ Table-    │ IDMap    │ BM25+RRF │ LCEL     │ Search   │
+    │ openpyxl│ Atomic    │ Auto-IVF │ Cross-   │ Stream   │ Analytics│
+    │ pptx    │ Dedup     │ Export   │ Encoder  │ Demo     │ KG       │
+    │ BS4     │ SHA-256   │ Thread🔒│ Rerank   │ History  │ Crawl    │
     └─────────┴───────────┴──────────┴──────────┴──────────┴──────────┘
 ```
 
 ### Data Flow
 
 ```
-Document → OCR/Parse → Sentence Chunk → Embed (384D) → FAISS Index
+Document → OCR/Parse → Sentence Chunk → Embed (384D) → FAISS Index (IDMap)
                                                              ↓
-Question → Embed → FAISS Search (top 20) → BM25 Boost → Rerank (top 5)
+Question → Embed → FAISS Search (top 20) → BM25 + RRF → Rerank (top 5)
                                                              ↓
-                                              Mistral 7B → Answer + Sources
+                                              LLM (Ollama/OpenAI/Demo) → Answer + Sources
                                                              ↓
-                                              Cache → Session → WebSocket
+                                              Cache → Session → Analytics → WebSocket
 ```
 
 ---
@@ -120,7 +126,7 @@ open http://localhost:8000
 **Prerequisites:**
 
 - Python 3.10+
-- [Ollama](https://ollama.ai/) installed and running
+- [Ollama](https://ollama.ai/) installed and running (optional — Demo Mode works without it)
 
 ```bash
 # 1. Clone & install
@@ -128,18 +134,31 @@ git clone https://github.com/kulkarnishub377/Document-AI---RAG-Pipeline.git
 cd Document-AI---RAG-Pipeline
 pip install -r requirements.txt
 
-# 2. Pull the LLM model
+# 2. Pull the LLM model (optional)
 ollama pull mistral
 
 # 3. Configure (optional)
 cp .env.example .env
-# Edit .env to customize settings
+# Edit .env to customize settings (LLM provider, CORS, etc.)
 
 # 4. Run application
 python run.py
 ```
 
 Open [http://localhost:8000](http://localhost:8000) in your browser.
+
+### Option 3: OpenAI Backend
+
+```bash
+cp .env.example .env
+# Edit .env:
+#   LLM_PROVIDER=openai
+#   OPENAI_API_KEY=sk-your-key-here
+#   OPENAI_MODEL=gpt-3.5-turbo
+
+pip install langchain-openai
+python run.py
+```
 
 ---
 
@@ -148,116 +167,150 @@ Open [http://localhost:8000](http://localhost:8000) in your browser.
 ```
 DocuAI Studio/
 ├── api/
-│   └── app.py                 # FastAPI REST + WebSocket server (30+ endpoints)
+│   └── app.py                 # FastAPI REST + WebSocket server (40+ endpoints)
 ├── chunking/
 │   └── semantic_chunker.py    # Unicode-aware sentence chunking with dedup
 ├── embedding/
-│   └── vector_store.py        # FAISS + BM25 hybrid index (GPU-aware)
-├── features/                  # 🆕 v3.0 Feature Modules
+│   └── vector_store.py        # FAISS + BM25 hybrid index (IDMap, RRF, auto-IVF)
+├── features/                  # Feature Modules
 │   ├── knowledge_graph.py     # Entity extraction + relationship mapping
 │   ├── collaboration.py       # WebSocket real-time multi-user Q&A
 │   ├── pdf_annotator.py       # PDF highlighting with source passages
-│   └── comparator.py          # Document comparison analysis
+│   ├── comparator.py          # Document comparison analysis
+│   ├── evaluation.py          # RAGAS-inspired evaluation metrics
+│   └── query_analytics.py     # 🆕 v3.1 Query analytics tracker
 ├── frontend/
-│   ├── index.html             # UI with modals, analytics, and collaboration
-│   ├── css/style.css          # Premium dark glassmorphic theme
-│   └── js/app.js              # Client logic (XSS-safe, streaming, sessions)
+│   ├── index.html             # UI with Search, Batch, KG, Analytics views
+│   ├── css/style.css          # Premium dark/light glassmorphic theme
+│   └── js/app.js              # Client logic (markdown, streaming, mobile)
 ├── ingestion/
 │   └── document_loader.py     # Multi-format loader (PDF/Excel/PPTX/CSV/Image/Web)
 ├── llm/
-│   └── prompt_chains.py       # 4 LCEL chains + streaming + chat history
+│   └── prompt_chains.py       # Ollama/OpenAI chains + streaming + demo mode
 ├── retrieval/
 │   └── reranker.py            # Cross-encoder reranking
-├── utils/                     # 🆕 v3.0 Utilities
+├── utils/
 │   ├── cache.py               # LRU query cache with TTL
 │   ├── rate_limiter.py        # Sliding-window rate limiter
 │   ├── sessions.py            # SQLite persistent chat sessions
 │   └── exceptions.py          # Custom exception hierarchy
 ├── tests/
-│   ├── test_api.py            # 16+ API endpoint tests
+│   ├── conftest.py            # Shared test fixtures
+│   ├── test_api.py            # 30+ API endpoint tests
 │   ├── test_chunker.py        # Chunking unit tests
 │   ├── test_config.py         # Config override tests
 │   ├── test_pipeline.py       # Pipeline integration tests
 │   ├── test_reranker.py       # Reranker unit tests
 │   └── test_vector_store.py   # Vector store unit tests
-├── config.py                  # Central configuration (env-driven, 30+ settings)
-├── pipeline.py                # Pipeline orchestrator + caching + KG
+├── config.py                  # Central configuration (env-driven, 40+ settings)
+├── pipeline.py                # Pipeline orchestrator (batch, versioning, export)
 ├── run.py                     # Entry point
 ├── Dockerfile                 # Container build (with healthcheck)
 ├── docker-compose.yml         # Full stack: app + Ollama
-├── pyproject.toml             # Modern Python packaging
-├── requirements.txt           # Python dependencies
-├── Makefile                   # Dev shortcuts (test, lint, format, docker)
-├── CHANGELOG.md               # Version history
-├── CONTRIBUTING.md            # Contribution guidelines
+├── requirements.txt           # Python dependencies (pinned)
+├── CHANGELOG.md               # 🆕 Version history
 ├── .env.example               # Configuration template
 └── README.md                  # This file
 ```
 
 ---
 
-## 🔌 API Reference (30+ Endpoints)
+## 🔌 API Reference (40+ Endpoints)
 
 ### Core
 
-| Method  | Endpoint       | Description                        |
-| ------- | -------------- | ---------------------------------- |
-| `GET` | `/`          | Serve frontend UI                  |
-| `GET` | `/health`    | Health check with version          |
-| `GET` | `/status`    | Index stats + Ollama status        |
-| `GET` | `/analytics` | Storage, cache, document breakdown |
+| Method | Endpoint     | Description                        |
+| ------ | ------------ | ---------------------------------- |
+| `GET`  | `/`          | Serve frontend UI                  |
+| `GET`  | `/health`    | Health check with version          |
+| `GET`  | `/status`    | Index stats + Ollama status        |
+| `GET`  | `/analytics` | Storage, cache, document breakdown |
 
 ### Ingestion
 
-| Method   | Endpoint          | Description                                                  |
-| -------- | ----------------- | ------------------------------------------------------------ |
+| Method | Endpoint        | Description                                                   |
+| ------ | --------------- | ------------------------------------------------------------- |
 | `POST` | `/ingest`       | Upload a single document (PDF/Excel/PPTX/Image/DOCX/CSV/TXT) |
-| `POST` | `/ingest/url`   | Ingest a web URL                                             |
-| `POST` | `/ingest/batch` | Upload multiple documents at once                            |
+| `POST` | `/ingest/url`   | Ingest a web URL                                              |
+| `POST` | `/ingest/async` | 🆕 Non-blocking ingestion with task ID                        |
 
 ### Query & AI
 
-| Method   | Endpoint          | Description                                                 |
-| -------- | ----------------- | ----------------------------------------------------------- |
+| Method | Endpoint        | Description                                                 |
+| ------ | --------------- | ----------------------------------------------------------- |
 | `POST` | `/query`        | Ask a question (sync, with source filtering & chat history) |
 | `POST` | `/query-stream` | Ask a question (streaming SSE)                              |
+| `POST` | `/query/batch`  | 🆕 Ask multiple questions at once                           |
+| `POST` | `/search`       | 🆕 Semantic search (no LLM)                                 |
 | `POST` | `/summarize`    | Summarize documents by topic                                |
 | `POST` | `/extract`      | Extract structured fields as JSON                           |
 | `POST` | `/table-query`  | Ask about tables                                            |
-| `POST` | `/compare`      | 🆕 Compare two documents                                    |
-| `POST` | `/annotate`     | 🆕 Q&A with highlighted PDF export                          |
+| `POST` | `/compare`      | Compare two documents                                       |
+| `POST` | `/annotate`     | Q&A with highlighted PDF export                             |
+| `POST` | `/evaluate`     | Run RAGAS evaluation on a query                             |
 
-### Sessions (v3.0)
+### Sessions
 
-| Method     | Endpoint                    | Description               |
-| ---------- | --------------------------- | ------------------------- |
+| Method   | Endpoint                    | Description               |
+| -------- | --------------------------- | ------------------------- |
 | `POST`   | `/sessions`               | Create a new chat session |
 | `GET`    | `/sessions`               | List recent sessions      |
 | `GET`    | `/sessions/{id}`          | Get session details       |
 | `GET`    | `/sessions/{id}/messages` | Get messages in a session |
-| `POST`   | `/sessions/{id}/messages` | Add a message             |
 | `DELETE` | `/sessions/{id}`          | Delete a session          |
 
-### Knowledge Graph (v3.0)
+### Knowledge Graph
 
-| Method  | Endpoint                           | Description                     |
-| ------- | ---------------------------------- | ------------------------------- |
-| `GET` | `/knowledge-graph`               | Full graph data (nodes + edges) |
-| `GET` | `/knowledge-graph/entities`      | Search entities                 |
-| `GET` | `/knowledge-graph/entity/{name}` | Entity details + neighbors      |
+| Method | Endpoint                     | Description                     |
+| ------ | ---------------------------- | ------------------------------- |
+| `GET`  | `/knowledge-graph`           | Full graph data (nodes + edges) |
+| `GET`  | `/knowledge-graph/search`    | Search entities by type         |
+| `POST` | `/knowledge-graph/reset`     | Clear the knowledge graph       |
 
-### Management
+### Document Management
 
-| Method     | Endpoint                  | Description                    |
-| ---------- | ------------------------- | ------------------------------ |
-| `POST`   | `/clear`                | Clear the entire index         |
-| `DELETE` | `/document/{filename}`  | Delete a specific document     |
-| `GET`    | `/documents`            | 🆕 List all uploaded documents |
-| `GET`    | `/cache/stats`          | 🆕 Cache statistics            |
-| `POST`   | `/cache/clear`          | 🆕 Clear query cache           |
-| `GET`    | `/annotated`            | 🆕 List annotated PDFs         |
-| `GET`    | `/annotated/{filename}` | 🆕 Download annotated PDF      |
-| `WS`     | `/ws/{room_id}`         | 🆕 Real-time collaboration     |
+| Method   | Endpoint               | Description                             |
+| -------- | ---------------------- | --------------------------------------- |
+| `GET`    | `/documents`           | List all indexed documents              |
+| `DELETE` | `/document/{filename}` | Delete a specific document              |
+| `POST`   | `/clear`               | Clear the entire index                  |
+| `GET`    | `/versions`            | 🆕 Get version history for all docs     |
+| `GET`    | `/versions/{filename}` | 🆕 Get version history for a document   |
+| `GET`    | `/export`              | 🆕 Download index as zip                |
+| `POST`   | `/import`              | 🆕 Upload and restore index from zip    |
+| `GET`    | `/download/{filename}` | Download an uploaded file               |
+
+### Scheduled Crawling (v3.1)
+
+| Method | Endpoint        | Description                           |
+| ------ | --------------- | ------------------------------------- |
+| `GET`  | `/crawl/urls`   | 🆕 List scheduled crawl URLs          |
+| `POST` | `/crawl/add`    | 🆕 Add a URL to the crawl schedule    |
+| `POST` | `/crawl/remove` | 🆕 Remove a URL from the schedule     |
+| `POST` | `/crawl/run`    | 🆕 Manually trigger a crawl           |
+
+### Analytics & Evaluation (v3.1)
+
+| Method | Endpoint                 | Description                          |
+| ------ | ------------------------ | ------------------------------------ |
+| `GET`  | `/query-analytics`       | 🆕 Query frequency & response stats  |
+| `POST` | `/query-analytics/clear` | 🆕 Clear analytics data              |
+| `GET`  | `/evaluate/dashboard`    | RAGAS evaluation dashboard           |
+| `GET`  | `/evaluate/history`      | Evaluation history log               |
+| `POST` | `/evaluate/clear`        | Clear evaluation history             |
+
+### Cache
+
+| Method | Endpoint       | Description        |
+| ------ | -------------- | ------------------ |
+| `GET`  | `/cache/stats` | Cache statistics   |
+| `POST` | `/cache/clear` | Clear query cache  |
+
+### Tasks (v3.1)
+
+| Method | Endpoint          | Description                  |
+| ------ | ----------------- | ---------------------------- |
+| `GET`  | `/tasks/{id}`     | 🆕 Get async task status     |
 
 ---
 
@@ -271,36 +324,32 @@ curl -X POST http://localhost:8000/ingest -F "file=@invoice.pdf"
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What is the total amount on the invoice?"}'
-
-# Example response:
-# {
-#   "answer": "The total amount on the invoice is $2,450.00, as stated on page 2...",
-#   "sources": [
-#     {
-#       "source": "invoice.pdf",
-#       "page": 2,
-#       "excerpt": "Total amount due: $2,450.00",
-#       "score": 0.95,
-#       "chunk_type": "text"
-#     }
-#   ]
-# }
 ```
 
-### Example: Compare Two Documents
+### Example: Batch Q&A
 
 ```bash
-curl -X POST http://localhost:8000/compare \
+curl -X POST http://localhost:8000/query/batch \
   -H "Content-Type: application/json" \
-  -d '{"doc_a": "contract_v1.pdf", "doc_b": "contract_v2.pdf", "question": "What clauses changed?"}'
+  -d '{"questions": ["What is the total?", "Who signed?", "When is the due date?"]}'
 ```
 
-### Example: Upload Excel
+### Example: Semantic Search
 
 ```bash
-curl -X POST http://localhost:8000/ingest -F "file=@financial_report.xlsx"
-curl -X POST http://localhost:8000/query \
-  -d '{"question": "What was the Q3 revenue?"}'
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "payment terms", "top_k": 10}'
+```
+
+### Example: Export & Import Index
+
+```bash
+# Export
+curl -o backup.zip http://localhost:8000/export
+
+# Import
+curl -X POST http://localhost:8000/import -F "file=@backup.zip"
 ```
 
 ---
@@ -311,45 +360,59 @@ All settings can be configured via environment variables or a `.env` file:
 
 | Variable                    | Default              | Description                            |
 | --------------------------- | -------------------- | -------------------------------------- |
-| `OLLAMA_MODEL`            | `mistral`          | LLM model name                         |
-| `OLLAMA_VISION_MODEL`     | `llava`            | Vision model for image extraction      |
-| `EMBED_MODEL_NAME`        | `all-MiniLM-L6-v2` | Embedding model                        |
-| `CHUNK_SIZE`              | `512`              | Chunk size in characters               |
-| `RETRIEVAL_TOP_K`         | `20`               | FAISS candidates to retrieve           |
-| `RERANKER_TOP_K`          | `5`                | Final results after reranking          |
-| `ENABLE_GPU`              | `auto`             | GPU mode:`auto`, `true`, `false` |
-| `MULTILINGUAL_MODE`       | `false`            | Auto-detect document language          |
-| `MAX_FILE_SIZE_MB`        | `50`               | Max upload size                        |
-| `CACHE_ENABLED`           | `true`             | 🆕 Enable query caching                |
-| `CACHE_MAX_SIZE`          | `128`              | 🆕 Max cached queries                  |
-| `CACHE_TTL_SECS`          | `3600`             | 🆕 Cache TTL in seconds                |
-| `RATE_LIMIT_ENABLED`      | `true`             | 🆕 Enable rate limiting                |
-| `RATE_LIMIT_REQUESTS`     | `60`               | 🆕 Max requests per window             |
-| `RATE_LIMIT_WINDOW`       | `60`               | 🆕 Window size (seconds)               |
-| `KNOWLEDGE_GRAPH_ENABLED` | `true`             | 🆕 Enable KG extraction                |
-| `WS_ENABLED`              | `true`             | 🆕 Enable WebSocket collaboration      |
-| `LOG_FORMAT`              | `text`             | 🆕 Log format:`text` or `json`     |
+| `LLM_PROVIDER`             | `ollama`             | 🆕 `ollama` or `openai`               |
+| `OLLAMA_MODEL`             | `mistral`            | LLM model name                         |
+| `OLLAMA_VISION_MODEL`      | `llava`              | Vision model for image extraction      |
+| `OPENAI_API_KEY`           | —                    | 🆕 Required when `LLM_PROVIDER=openai`|
+| `OPENAI_MODEL`             | `gpt-3.5-turbo`      | 🆕 OpenAI model to use                |
+| `LLM_TIMEOUT_SECS`         | `120`                | 🆕 LLM request timeout in seconds     |
+| `EMBED_MODEL_NAME`         | `all-MiniLM-L6-v2`  | Embedding model                        |
+| `CHUNK_SIZE`               | `512`                | Chunk size in characters               |
+| `RETRIEVAL_TOP_K`          | `20`                 | FAISS candidates to retrieve           |
+| `RERANKER_TOP_K`           | `5`                  | Final results after reranking          |
+| `IVF_THRESHOLD`            | `50000`              | 🆕 Auto-IVF upgrade threshold         |
+| `ENABLE_GPU`               | `auto`               | GPU mode: `auto`, `true`, `false`      |
+| `MULTILINGUAL_MODE`        | `false`              | Auto-detect document language          |
+| `MAX_FILE_SIZE_MB`         | `50`                 | Max upload size                        |
+| `CORS_ORIGINS`             | `*`                  | 🆕 Configurable CORS origins          |
+| `CACHE_ENABLED`            | `true`               | Enable query caching                   |
+| `RATE_LIMIT_ENABLED`       | `true`               | Enable rate limiting                   |
+| `KNOWLEDGE_GRAPH_ENABLED`  | `true`               | Enable KG extraction                   |
+| `CRAWL_ENABLED`            | `false`              | 🆕 Enable scheduled web crawling      |
+| `CRAWL_INTERVAL_MINS`      | `1440`               | 🆕 Crawl interval (default: 24h)      |
+| `QUERY_ANALYTICS_ENABLED`  | `true`               | 🆕 Enable query analytics tracking    |
+| `DOC_VERSIONING_ENABLED`   | `true`               | 🆕 Enable document versioning         |
+| `WS_ENABLED`               | `true`               | Enable WebSocket collaboration         |
+| `LOG_FORMAT`               | `text`               | Log format: `text` or `json`           |
 
 See [`.env.example`](.env.example) for the full list.
 
-Advanced model tip: you can improve answer quality by using stronger Ollama models in `.env`, for example `qwen2.5:14b` or `llama3.1:8b` for `OLLAMA_MODEL`, and `llava:13b` (or another vision-capable model you have installed) for `OLLAMA_VISION_MODEL`.
+> **Tip**: Improve answer quality with stronger models like `qwen2.5:14b` or `llama3.1:8b` for `OLLAMA_MODEL`, and `llava:13b` for `OLLAMA_VISION_MODEL`.
 
 ---
 
 ## 🗺️ Roadmap
 
-- [X] Multi-format document support (PDF, Image, DOCX, Excel, PPTX, CSV) ✅
-- [X] Persistent conversation sessions with SQLite ✅
-- [X] Knowledge graph extraction ✅
-- [X] Document comparison ✅
-- [X] PDF annotation export ✅
-- [X] Real-time WebSocket collaboration ✅
-- [X] Query caching with TTL ✅
-- [X] API rate limiting ✅
+- [x] Multi-format document support (PDF, Image, DOCX, Excel, PPTX, CSV) ✅
+- [x] Persistent conversation sessions with SQLite ✅
+- [x] Knowledge graph extraction ✅
+- [x] Document comparison ✅
+- [x] PDF annotation export ✅
+- [x] Real-time WebSocket collaboration ✅
+- [x] Query caching with TTL ✅
+- [x] API rate limiting ✅
+- [x] Evaluation dashboard using RAGAS metrics ✅
+- [x] Configurable LLM providers (Ollama / OpenAI) ✅
+- [x] Batch Q&A with CSV export ✅
+- [x] Query analytics dashboard ✅
+- [x] Document versioning ✅
+- [x] Export / Import index ✅
+- [x] Scheduled web crawling ✅
+- [x] Semantic search endpoint ✅
+- [x] Async ingestion with task tracking ✅
 - [ ] User authentication for multi-user deployments
-- [X] Evaluation dashboard using RAGAS metrics
 - [ ] Webhook support for document change notifications
-- [ ] Scheduled ingestion from folders/S3
+- [ ] OCR confidence metrics
 
 ---
 
@@ -358,6 +421,7 @@ Advanced model tip: you can improve answer quality by using stronger Ollama mode
 **Ollama connection refused**
 Make sure Ollama is running: `ollama serve`
 Check it responds: `curl http://localhost:11434/api/tags`
+💡 If Ollama is unavailable, the app works in **Demo Mode** with heuristic answers.
 
 **PaddleOCR first run is slow**
 It downloads ~45 MB of model weights on first OCR call. This is normal — subsequent runs are fast.
@@ -372,6 +436,9 @@ Ingest at least one document first before querying:
 
 **Rate limit exceeded**
 Increase `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW` in `.env`, or set `RATE_LIMIT_ENABLED=false`.
+
+**OpenAI API errors**
+Check your `OPENAI_API_KEY` is valid and has credit. Set `LLM_PROVIDER=ollama` to fall back to local mode.
 
 ---
 

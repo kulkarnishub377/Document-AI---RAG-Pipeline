@@ -1,5 +1,4 @@
 # chunking/semantic_chunker.py
-# pyre-ignore-all-errors
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 — Semantic Chunking
 #
@@ -9,6 +8,7 @@
 #   • Keep tables as single atomic chunks (never split a table mid-row)
 #   • Deduplicate chunks by content hash
 #   • Support non-English documents with Unicode sentence boundaries
+# v3.1 — Fixed overlap variable mismatch, removed pyre-ignore abuse
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -16,15 +16,15 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import List, Set
 
-from loguru import logger  # type: ignore
+from loguru import logger
 
-from config import CHUNK_SIZE, CHUNK_OVERLAP  # type: ignore
+from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from ingestion.document_loader import PageData  # type: ignore
+    from ingestion.document_loader import PageData
 
 
 # ── Output data container ────────────────────────────────────────────────────
@@ -42,13 +42,13 @@ class Chunk:
 
 def _sha256(text: str) -> str:
     digest_val = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    return digest_val[0:16]  # pyre-ignore
+    return digest_val[:16]
 
 
 def _split_into_sentences(text: str) -> List[str]:
     """
     Unicode-aware sentence splitter.
-    
+
     First tries English-style splitting on punctuation boundaries.
     Falls back to splitting on common Unicode sentence terminators
     for non-English text (Hindi, Chinese, Japanese, Arabic, etc.).
@@ -60,21 +60,16 @@ def _split_into_sentences(text: str) -> List[str]:
     # English-style: split after .!? followed by whitespace and capital letter/digit
     english_pattern = r'(?<=[.!?])\s+(?=[A-Z0-9])'
     sentences = re.split(english_pattern, text)
-    
+
     # If English splitting didn't produce multiple sentences, try Unicode boundaries
     if len(sentences) <= 1 and len(text) > CHUNK_SIZE:
-        # Unicode sentence terminators: 
-        # Hindi/Devanagari: । (purna viram)
-        # Chinese/Japanese: 。！？
-        # Arabic: ۔
-        # Standard: .!?
         unicode_pattern = r'(?<=[।。！？۔.!?])\s*'
         sentences = re.split(unicode_pattern, text)
-    
+
     # Last resort: if still one huge blob, split on newlines
     if len(sentences) <= 1 and len(text) > CHUNK_SIZE:
         sentences = text.split('\n')
-    
+
     # Final fallback: split on any double-space or long whitespace
     if len(sentences) <= 1 and len(text) > CHUNK_SIZE:
         sentences = re.split(r'\s{2,}', text)
@@ -95,7 +90,7 @@ def _sentences_to_chunks(sentences: List[str],
 
     chunks: List[str] = []
     current_parts: List[str] = []
-    current_len = 0
+    current_len: int = 0
 
     for sent in sentences:
         sent_len = len(sent)
@@ -123,9 +118,10 @@ def _sentences_to_chunks(sentences: List[str],
             current_parts.clear()
             if overlap_str:
                 current_parts.append(overlap_str)
-            current_len = len(overlap_text)
+            # v3.1 fix: use overlap_str length (was overlap_text which has trailing space)
+            current_len = len(overlap_str)
 
-        current_parts.append(sent)  # pyre-ignore
+        current_parts.append(sent)
         current_len += (sent_len + 1)
 
     if current_parts:
@@ -150,7 +146,7 @@ def _table_to_markdown(table: List[List[str]]) -> str:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-def chunk_pages(pages: List[PageData]) -> List[Chunk]:
+def chunk_pages(pages: List["PageData"]) -> List[Chunk]:
     """
     Convert a list of PageData objects into a deduplicated list of Chunks.
 
@@ -166,12 +162,12 @@ def chunk_pages(pages: List[PageData]) -> List[Chunk]:
         return []
 
     all_chunks: List[Chunk] = []
-    seen_hashes: set[str] = set()
-    global_idx: Any = 0
-    skipped: Any = 0
+    seen_hashes: Set[str] = set()
+    global_idx: int = 0
+    skipped: int = 0
 
     for page in pages:
-        chunk_idx_on_page: Any = 0
+        chunk_idx_on_page: int = 0
 
         # ── Text chunks ──────────────────────────────────────────────────
         if page.text.strip():
@@ -181,7 +177,7 @@ def chunk_pages(pages: List[PageData]) -> List[Chunk]:
             for seg in text_segments:
                 h = _sha256(seg)
                 if h in seen_hashes:
-                    skipped += 1  # pyre-ignore
+                    skipped += 1
                     continue
                 seen_hashes.add(h)
 
@@ -193,8 +189,8 @@ def chunk_pages(pages: List[PageData]) -> List[Chunk]:
                     text       = seg,
                     chunk_type = "text",
                 ))
-                chunk_idx_on_page += 1  # pyre-ignore
-                global_idx += 1  # pyre-ignore
+                chunk_idx_on_page += 1
+                global_idx += 1
 
         # ── Table chunks (kept atomic — never split a table) ─────────────
         for tbl in page.tables:
@@ -203,7 +199,7 @@ def chunk_pages(pages: List[PageData]) -> List[Chunk]:
                 continue
             h = _sha256(md)
             if h in seen_hashes:
-                skipped += 1  # pyre-ignore
+                skipped += 1
                 continue
             seen_hashes.add(h)
 
@@ -215,12 +211,12 @@ def chunk_pages(pages: List[PageData]) -> List[Chunk]:
                 text       = md,
                 chunk_type = "table",
             ))
-            chunk_idx_on_page += 1  # pyre-ignore
-            global_idx += 1  # pyre-ignore
+            chunk_idx_on_page += 1
+            global_idx += 1
 
-    text_chunks: Any = sum(1 for c in all_chunks if c.chunk_type == "text")  # pyre-ignore
-    table_chunks: Any = sum(1 for c in all_chunks if c.chunk_type == "table")  # pyre-ignore
-            
+    text_chunks: int = sum(1 for c in all_chunks if c.chunk_type == "text")
+    table_chunks: int = sum(1 for c in all_chunks if c.chunk_type == "table")
+
     logger.info(
         f"Chunking complete: {len(all_chunks)} chunks "
         f"({text_chunks} text, {table_chunks} table) from "

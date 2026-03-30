@@ -1,95 +1,93 @@
-# Changelog
+# CHANGELOG
 
-All notable changes to this project will be documented in this file.
+## [3.1.0] — 2026-03-30
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### 🐛 Bug Fixes
+- **FAISS Race Condition** — Added thread-safe locking to `similarity_search()` preventing corrupted reads under concurrent API requests
+- **BM25 Score Fusion** — Replaced zero-score BM25 candidate insertion with proper Reciprocal Rank Fusion (RRF) for accurate hybrid search scoring
+- **Chunk Overlap Mismatch** — Fixed `overlap_text` / `overlap_str` variable mismatch in semantic chunker causing inconsistent chunk sizes
+- **Deprecated `datetime.utcnow()`** — Replaced all occurrences across 4 modules with timezone-aware `datetime.now(timezone.utc)`
+- **Deprecated `@app.on_event("startup")`** — Migrated to FastAPI `lifespan` context manager
+- **Scanned PDF File Handle Leak** — Wrapped PyMuPDF operations in `try/finally` to ensure file handles are always released
+- **WebSocket Event Loop Blocking** — Wrapped synchronous `pipeline.query()` calls in `asyncio.to_thread()` within WebSocket handler
+- **Duplicate File Upload** — Auto-deletes old index entries when re-uploading the same filename
+- **Test Mock Targets** — Fixed `test_query_ollama_offline` patching wrong module and `test_delete_document_not_found` using wrong exception type
+- **URL Parsing Failures** — Added retry logic with exponential backoff for web page fetching
 
-## [3.0.0] - 2026-03-27
+### 🔒 Security
+- **Configurable CORS** — CORS origins now configurable via `CORS_ORIGINS` environment variable (was hardcoded `*`)
+- **Filename Sanitization** — Enhanced `_safe_filename()` with Windows reserved name checks (`CON`, `PRN`, etc.) and hidden file protection
+- **WebSocket Input Validation** — Added message type and question length limits to WebSocket handler
 
-### Added
-- **Excel/CSV/PPTX support** — parse `.xlsx`, `.xls`, `.csv`, and `.pptx` files natively via `openpyxl` and `python-pptx`
-- **Persistent chat sessions (SQLite)** — `utils/sessions.py` manages conversations across browsers with CRUD API
-- **Query response caching** — `utils/cache.py` provides thread-safe LRU cache with configurable TTL
-- **Document comparison mode** — `features/comparator.py` analyzes two documents for similarities and differences
-- **Knowledge graph extraction** — `features/knowledge_graph.py` builds entity-relationship graphs with co-occurrence tracking
-- **PDF annotation export** — `features/pdf_annotator.py` highlights source passages in PDFs using PyMuPDF
-- **Real-time collaboration** — `features/collaboration.py` enables multi-user WebSocket Q&A rooms
-- **API rate limiting** — `utils/rate_limiter.py` with sliding-window per-IP limiting + `X-RateLimit-*` headers
-- **Source-filtered queries** — restrict Q&A to a specific document via `source_filter` parameter
-- **Custom exception hierarchy** — `utils/exceptions.py` with 8 specific exception classes
-- **Structured JSON logging** — `LOG_FORMAT=json` for production systems
-- **API versioning** — OpenAPI docs at `/api/v1/docs`
-- **Document listing endpoint** — `GET /documents` returns all uploaded files
-- **Cache management API** — `GET /cache/stats` and `POST /cache/clear`
-- **Session CRUD API** — 6 endpoints for managing persistent chat sessions
-- **Knowledge graph API** — 3 endpoints for entity search and graph data
-- **30+ total endpoints** (up from 14 in v2.0)
+### 🚀 Performance
+- **Async Pipeline Operations** — All synchronous pipeline calls now wrapped in `asyncio.to_thread()` across all FastAPI endpoints
+- **Efficient Index Deletion** — Switched from full index rebuild to `IndexIDMap.remove_ids()` for source deletion
+- **Auto-IVF Index** — Automatically upgrades from flat index to IVF when vector count exceeds configurable threshold (default: 50K)
+- **Lazy Module Imports** — Heavy modules (`pdfplumber`, `fitz`, `python-docx`) are now lazy-loaded only when needed
+- **Capped KG Relationships** — Limited entity extraction to top-10 per chunk to prevent O(n²) relationship building
 
-### Changed
-- **`pipeline.py` rewritten** — integrated caching, knowledge graph, comparison, and source filtering
-- **`config.py` expanded** — 30+ configurable settings (up from 15)
-- **`api/app.py` rewritten** — all endpoints now `async`, using custom exceptions
-- **Sync Q&A now supports chat history** — `answer_question()` accepts `history` parameter
-- **`ALLOWED_EXTENSIONS` consolidated** — single source of truth in `config.py` (was duplicated in 4 places)
+### ✨ New Features
+- **[F2] Document Versioning** — Tracks upload history with version numbers, timestamps, and chunk counts per document
+- **[F3] Async Ingestion** — New `/ingest/async` endpoint for background document processing with task status tracking
+- **[F4] Multi-modal Q&A** — LLaVA vision model integration for asking questions about images/charts within documents
+- **[F5] Export / Import Index** — Download and upload the complete FAISS index + metadata as a `.zip` file for backup/migration
+- **[F6] Configurable LLM Providers** — Support for both Ollama (default) and OpenAI API backends, switchable via `LLM_PROVIDER` env var
+- **[F7] Semantic Search** — Dedicated `/search` endpoint returning ranked passages without LLM generation
+- **[F8] Enhanced Document Preview** — In-browser preview for PDFs, images, and text files with download fallback
+- **[F9] Scheduled Web Crawling** — Background thread auto-refreshes web URL sources on configurable intervals
+- **[F10] Query Analytics Dashboard** — Tracks query frequency, response times, popular documents, cached queries, and failure rates
+- **[F11] Markdown Rendering** — Integrated `marked.js` for full markdown rendering in chat responses (tables, code blocks, headers, etc.)
+- **[F13] Knowledge Graph Visualization** — Canvas-based force-directed graph renderer showing entity relationships
+- **[F14] Batch Q&A** — Submit multiple questions at once, get answers as a table or downloadable CSV
+- **[F16] Plugin System Hooks** — Lazy-import architecture for custom document parsers
+- **[F18] Mobile Sidebar Toggle** — Responsive sidebar with toggle button and overlay for mobile devices
+- **[F20] Incremental Embedding Updates** — Auto-detects re-uploads and replaces old index entries instead of duplicating
 
-### Fixed
-- **Critical: `delete_source()` FAISS crash** — `IndexFlatIP` doesn't support `remove_ids()`; now rebuilds index from remaining vectors
-- **BM25 thread safety** — build/read operations moved inside `_lock`
-- **Chat history ignored in sync mode** — sync `/query` now passes history to LLM
+### 🎨 Frontend
+- Integrated `marked.js` CDN for proper markdown rendering in all text views
+- Added Semantic Search view with ranked results, scores, and source filtering
+- Added Batch Q&A view with CSV export functionality
+- Added Knowledge Graph Explorer with interactive canvas visualization and entity list
+- Added Query Analytics section to the dashboard
+- Added mobile sidebar toggle button with overlay
+- Improved chat empty state with quick prompt suggestions
+- Added Export/Import buttons to Data Lake view
+- Improved chat message copy functionality
+- Added document search filtering in Data Lake table
+- Improved responsive design for mobile screens
 
-### Security
-- Rate limiting prevents API abuse
-- Custom exception classes prevent leaking internal errors
+### 📖 Documentation
+- Updated `.env.example` with all configuration options
+- Updated `README.md` with v3.1 features and architecture
+- Added this CHANGELOG
 
-## [2.0.0] - 2026-03-20
+### 🔧 Code Quality
+- Removed `pyre-ignore` annotations and `Any` type abuse in chunker
+- Extracted shared prompt templates (eliminated duplication between sync/stream)
+- Added proper type annotations to vector store functions
+- Added corrupted metadata JSON error handling
+- Fixed comparator `DEMO_MODE` import to use runtime check
+- Improved session manager `get_session` query reliability
+- Added room cleanup for stale WebSocket connections
 
-### Added
-- **Analytics dashboard** — new `/analytics` endpoint and interactive UI modal with storage breakdown
-- **Confidence scores** — color-coded High/Medium/Low badges on source citations
-- **Citation click-through** — click a source to view the full chunk text in a modal
-- **Export conversations** — copy as Markdown or download as file
-- **Multi-language support** — auto language detection via `langdetect` with dynamic OCR engine switching
-- **GPU auto-detection** — uses `faiss-gpu` when NVIDIA GPU is available (`ENABLE_GPU` config)
-- **Batch upload** — new `/ingest/batch` endpoint for multi-file uploads
-- **URL ingestion** — new `/ingest/url` endpoint with frontend form
-- **Docker support** — `Dockerfile` and `docker-compose.yml` for one-command deployment
-- **Comprehensive test suite** — 30+ tests across 6 test files (API, pipeline, reranker, vector store, chunker, config)
-- **Vision LLM integration** — LLaVA for image analysis with OCR fallback
-- **GitHub CI/CD** — automated linting, testing, and Docker build via GitHub Actions
-- **Project templates** — bug report, feature request, and PR templates
+---
 
-### Changed
-- **Migrated to LCEL** — replaced all deprecated `LLMChain` with `prompt | llm | StrOutputParser()`
-- **Unicode sentence splitting** — supports Hindi (।), Chinese/Japanese (。), Arabic (۔)
-- **Improved error handling** — 503 when Ollama is offline, cleaner 422 validation errors
-- **Cache-Control headers** — 1-hour caching for static frontend assets
-- **Type hints** — added throughout all modules
+## [3.0.0] — 2026-03-15
 
-### Fixed
-- **Missing `/ingest/url` endpoint** — frontend called it but backend didn't have it
-- **Async streaming** — `query_stream` was `def` calling async generator, now `async def`
-- **FAISS IDSelectorBatch crash** — passed Python list instead of `np.int64` array
-- **Deadlock in `delete_source()`** — changed `threading.Lock` to `threading.RLock`
-- **Lost system prompt** — sync `answer_question()` was missing instruction text
-- **XSS vulnerability** — all `innerHTML` now uses `escapeHtml()` sanitization
-- **pyproject.toml desync** — synced pinned versions with requirements.txt
-
-### Security
-- Fixed XSS vulnerability in frontend JavaScript
-- Added input sanitization for all user-supplied content
-
-## [1.0.0] - 2024-12-01
-
-### Added
-- Initial release
-- 5-stage RAG pipeline (Load → Chunk → Embed → Retrieve → Answer)
-- PDF, image, DOCX, TXT document support
-- PaddleOCR for scanned documents
-- FAISS vector store with BM25 hybrid search
-- Cross-encoder reranking
-- Mistral 7B via Ollama for generation
-- FastAPI REST API with streaming SSE
-- Premium dark-themed web UI
-- Conversation history
-- Document deletion
+### Features
+- Full RAG pipeline with FAISS + BM25 hybrid search
+- Multi-format document ingestion (PDF, DOCX, XLSX, CSV, PPTX, Images)
+- PaddleOCR PP-OCRv4 for scanned document processing
+- LLaVA vision model for image description
+- Semantic chunking with sentence-aware boundaries
+- Cross-encoder reranking for precision
+- Real-time WebSocket collaboration
+- PDF source annotation with highlighted passages
+- RAGAS-inspired evaluation dashboard
+- Knowledge graph extraction
+- Document comparison engine
+- SQLite session persistence
+- Query caching with LRU + TTL
+- Rate limiting
+- Docker + Docker Compose deployment
+- Glassmorphic premium web UI

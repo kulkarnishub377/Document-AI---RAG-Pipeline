@@ -1,15 +1,7 @@
 # features/evaluation.py
 # ─────────────────────────────────────────────────────────────────────────────
 # RAGAS-inspired Evaluation Dashboard
-#
-# Measures RAG pipeline quality across 4 dimensions:
-#   1. Faithfulness    — Is the answer grounded in context?
-#   2. Answer Relevancy — Does the answer address the question?
-#   3. Context Precision — Are the retrieved chunks relevant?
-#   4. Context Recall   — Are all needed chunks retrieved?
-#
-# Uses the local LLM (Ollama/Mistral) to evaluate each dimension,
-# no external API keys required.
+# v3.1 — Fixed datetime.utcnow() deprecation
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -19,7 +11,7 @@ import re
 import time
 import threading
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -96,10 +88,7 @@ class RAGASEvaluator:
         return 0.5  # Default if parsing fails
 
     def eval_faithfulness(self, answer: str, contexts: List[str]) -> float:
-        """
-        Faithfulness: Is every claim in the answer supported by the context?
-        Score 0.0 (hallucinated) to 1.0 (fully faithful).
-        """
+        """Faithfulness: Is every claim in the answer supported by the context?"""
         context_text = "\n---\n".join(contexts[:5])
         prompt = f"""You are an impartial judge evaluating whether an AI answer is faithful to the provided context.
 
@@ -121,10 +110,7 @@ SCORE:"""
         return self._parse_score(response)
 
     def eval_answer_relevancy(self, question: str, answer: str) -> float:
-        """
-        Answer Relevancy: Does the answer actually address the question?
-        Score 0.0 (off-topic) to 1.0 (directly answers).
-        """
+        """Answer Relevancy: Does the answer actually address the question?"""
         prompt = f"""You are evaluating whether an answer is relevant to the question asked.
 
 QUESTION: {question}
@@ -143,10 +129,7 @@ SCORE:"""
         return self._parse_score(response)
 
     def eval_context_precision(self, question: str, contexts: List[str]) -> float:
-        """
-        Context Precision: Are the retrieved chunks actually relevant to the question?
-        Score 0.0 (irrelevant chunks) to 1.0 (all chunks relevant).
-        """
+        """Context Precision: Are the retrieved chunks actually relevant to the question?"""
         if not contexts:
             return 0.0
 
@@ -165,10 +148,7 @@ Answer YES or NO only."""
         return round(relevant_count / min(len(contexts), 5), 2)
 
     def eval_context_recall(self, question: str, answer: str, contexts: List[str]) -> float:
-        """
-        Context Recall: Does the context contain all information needed for the answer?
-        Score 0.0 (missing info) to 1.0 (complete context).
-        """
+        """Context Recall: Does the context contain all information needed for the answer?"""
         context_text = "\n---\n".join(contexts[:5])
         prompt = f"""Evaluate whether the retrieved context contains all information needed to produce the answer.
 
@@ -195,18 +175,7 @@ SCORE:"""
         contexts: List[str],
         run_all: bool = True,
     ) -> EvalResult:
-        """
-        Run a full RAGAS-style evaluation on a Q&A interaction.
-
-        Args:
-            question: The user's question
-            answer: The LLM's answer
-            contexts: List of retrieved context chunks
-            run_all: If True, run all 4 metrics (slower but complete)
-
-        Returns:
-            EvalResult with scores for each dimension
-        """
+        """Run a full RAGAS-style evaluation on a Q&A interaction."""
         logger.info(f"Running RAGAS evaluation for: '{question[:60]}...'")
         t0 = time.perf_counter()
 
@@ -214,7 +183,7 @@ SCORE:"""
             question=question,
             answer=answer,
             contexts=contexts[:5],
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
         try:
@@ -276,7 +245,8 @@ SCORE:"""
                 }
 
             n = len(self._history)
-            avg = lambda key: round(sum(h.get(key, 0) for h in self._history) / n, 3)
+            def avg(key: str) -> float:
+                return round(sum(h.get(key, 0) for h in self._history) / n, 3)
 
             # Trend: last 20 overall scores
             trend = [

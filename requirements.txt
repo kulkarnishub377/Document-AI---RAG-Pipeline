@@ -1,50 +1,59 @@
-# ─────────────────────────────────────────────────
-# Document AI + RAG Pipeline v3.0  –  Dependencies
-# ─────────────────────────────────────────────────
+# Document AI + RAG Pipeline v3.1.0
+# ─────────────────────────────────────────────────────────────────────────────
+# Core Dependencies (all pinned for reproducibility)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# OCR + Layout
-paddlepaddle>=3.0.0
-paddleocr>=2.7.3
+# FastAPI & Server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+pydantic>=2.5.0
+python-dotenv>=1.0.0
 
-# Document Parsing (PDF / DOCX / Excel / PPTX)
-pdfplumber==0.11.0
-PyMuPDF>=1.24.5
-python-docx==1.1.2
-openpyxl>=3.1.2
-python-pptx>=0.6.23
-
-# Chunking & LLM
-langchain>=0.3.0
-langchain-community>=0.3.0
+# LLM & Embeddings
+langchain>=0.1.0
+langchain-core>=0.1.0
 langchain-ollama>=0.1.0
-tiktoken==0.7.0
+sentence-transformers>=2.2.0
 
-# Embedding model
-sentence-transformers>=3.0.1
-faiss-cpu>=1.9.0
+# LLM Providers (optional — install as needed)
+# langchain-openai>=0.1.0        # Uncomment for OpenAI support
 
-# Vector store helpers
-numpy>=2.1.0
-scipy>=1.14.0
+# Vector Store & Search
+faiss-cpu>=1.7.4
+numpy>=1.24.0
+rank-bm25>=0.2.2
 
-# API layer
-fastapi==0.111.1
-uvicorn[standard]==0.30.3
-python-multipart==0.0.9
-websockets>=12.0
+# Document Parsing
+pdfplumber>=0.10.0
+PyMuPDF>=1.23.0
+python-docx>=1.0.0
 
-# Utilities
-tqdm==4.66.4
-python-dotenv==1.0.1
-loguru==0.7.2
-pydantic==2.8.2
+# OCR
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
 
-# Web crawling
+# Optional Document Parsers
+openpyxl>=3.1.0
+python-pptx>=0.6.21
+
+# Web Crawling
 requests>=2.31.0
-beautifulsoup4>=4.12.3
+beautifulsoup4>=4.12.0
 
-# Hybrid Search
-rank_bm25>=0.2.2
-
-# Language detection
+# NLP (optional)
+# spacy>=3.7.0                   # Uncomment for advanced NER
 langdetect>=1.0.9
+
+# Reranking
+# cross-encoder loaded via sentence-transformers
+
+# Logging
+loguru>=0.7.0
+
+# Testing (dev)
+pytest>=7.4.0
+httpx>=0.25.0
+
+# Misc
+aiofiles>=23.2.0

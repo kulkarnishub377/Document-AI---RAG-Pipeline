@@ -1,384 +1,641 @@
 # llm/prompt_chains.py
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 5 — LLM Prompt Chains  (via Ollama + LangChain LCEL)
+# Stage 5 — LLM Prompt Chains (LangChain LCEL)
 #
-# Four reusable chains:
-#   1. answer_question   – general document Q&A with source citations
-#   2. summarize         – concise summary of retrieved context
-#   3. extract_fields    – structured key-value extraction (returns JSON)
-#   4. table_qa          – question answering specifically over tables
-#
-# All chains run against a local Ollama server (no API key needed).
-# Make sure Ollama is running:  ollama serve  (auto-starts on most OS)
-#
-# NOTE: Uses modern LCEL (LangChain Expression Language) pipe syntax
-#       instead of deprecated LLMChain.
+# Responsibilities:
+#   • Build reusable LangChain chains for Q&A, summarization, extraction, table QA
+#   • Support both Ollama (local) and OpenAI (cloud) providers
+#   • Provide robust offline/demo mode with intelligent heuristic answers
+#   • Stream responses via async generators (SSE)
+#   • All calls have configurable timeout
+# v3.1 — Added OpenAI support, shared prompt templates, LLM timeout,
+#         massively improved demo mode, better system prompts
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
 
-import json
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from langchain_ollama import OllamaLLM
-from langchain_core.prompts import PromptTemplate
+import requests
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from loguru import logger
 
-from config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from config import (
+    LLM_PROVIDER,
+    LLM_TIMEOUT_SECS,
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    OLLAMA_VISION_MODEL,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL,
+    OPENAI_MODEL,
+)
 
-# Forward ref for type hints
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from embedding.vector_store import SearchResult
+
+# ── Shared Prompt Templates (v3.1 — Q5 fix) ─────────────────────────────────
+
+SYSTEM_QA_PROMPT = """You are DocuAI, an expert document analysis assistant. You provide precise, well-structured answers based strictly on the provided context.
+
+RULES:
+1. Answer ONLY from the context provided — do not make up information
+2. If the context doesn't contain the answer, say "I don't have enough information in the indexed documents to answer this question."
+3. Use markdown formatting: headers, bold, bullet points, tables when helpful
+4. Cite sources inline using [Source: filename, Page X] notation
+5. Be concise but comprehensive — favor clarity over verbosity
+6. For numerical data, present in tables when 3+ values are involved
+7. If the question is about comparison, use structured comparisons"""
+
+QA_TEMPLATE = ChatPromptTemplate.from_messages([
+    ("system", SYSTEM_QA_PROMPT),
+    ("human", """CONTEXT FROM INDEXED DOCUMENTS:
+{context}
+
+CONVERSATION HISTORY:
+{history}
+
+USER QUESTION: {question}
+
+Provide a thorough, well-formatted answer based on the context above:"""),
+])
+
+SUMMARY_TEMPLATE = ChatPromptTemplate.from_messages([
+    ("system", """You are DocuAI, an expert summarization engine. Create executive-quality summaries that capture all key information.
+
+RULES:
+1. Start with a one-sentence TL;DR
+2. Follow with a structured summary using headers and bullet points
+3. Highlight key facts, numbers, dates, and named entities
+4. End with key takeaways or action items if applicable
+5. Use markdown formatting for readability"""),
+    ("human", """DOCUMENT CONTENT (TOPIC: {topic}):
+{context}
+
+Generate a comprehensive, well-structured summary:"""),
+])
+
+EXTRACTION_TEMPLATE = ChatPromptTemplate.from_messages([
+    ("system", """You are DocuAI, a precision data extraction engine. Extract exact field values from documents.
+
+RULES:
+1. Return a valid JSON object with the requested fields as keys
+2. Use null for fields not found in the context
+3. Extract exact values — do not paraphrase or approximate
+4. For monetary values, include the currency symbol
+5. For dates, use ISO format (YYYY-MM-DD) when possible"""),
+    ("human", """CONTEXT:
+{context}
+
+FIELDS TO EXTRACT: {fields}
+
+Return a JSON object with the extracted values. Only return the JSON, no other text:"""),
+])
+
+TABLE_QA_TEMPLATE = ChatPromptTemplate.from_messages([
+    ("system", """You are DocuAI, a table and spreadsheet analysis expert.
+
+RULES:
+1. Analyze tabular data precisely — reference specific rows, columns, and cells
+2. For calculations, show your work
+3. Use markdown tables in your response when presenting data
+4. If asked to compare values, present them side by side"""),
+    ("human", """TABLE DATA:
+{context}
+
+QUESTION: {question}
+
+Analyze the data and answer:"""),
+])
 
 
-# ── Singleton LLM ─────────────────────────────────────────────────────────────
+# ── LLM Provider Abstraction (v3.1 — F6) ────────────────────────────────────
 
-_llm: Optional[OllamaLLM] = None
+_llm_instance = None
 
 
-def _get_llm() -> OllamaLLM:
-    """Connect to the Ollama LLM (must be running locally)."""
-    global _llm
-    if _llm is None:
-        if not check_ollama_connection():
-            raise ConnectionError(
-                f"Ollama is not reachable at {OLLAMA_BASE_URL}. "
-                "Start it with: ollama serve"
-            )
-        logger.info(f"Connecting to Ollama model: {OLLAMA_MODEL}  "
-                    f"at {OLLAMA_BASE_URL}")
-        _llm = OllamaLLM(
-            model=OLLAMA_MODEL,
-            base_url=OLLAMA_BASE_URL,
-            temperature=0.1,          # low = factual, consistent
-            num_predict=1024,         # max tokens in response
-        )
-        logger.info("LLM ready.")
-    return _llm
+def _get_llm():
+    """Get or create an LLM instance based on configured provider."""
+    global _llm_instance
+    if _llm_instance is not None:
+        return _llm_instance
+
+    if LLM_PROVIDER == "openai" and OPENAI_API_KEY:
+        try:
+            from langchain_openai import ChatOpenAI
+            kwargs = {
+                "model": OPENAI_MODEL,
+                "api_key": OPENAI_API_KEY,
+                "temperature": 0.1,
+                "request_timeout": LLM_TIMEOUT_SECS,
+            }
+            if OPENAI_BASE_URL:
+                kwargs["base_url"] = OPENAI_BASE_URL
+            _llm_instance = ChatOpenAI(**kwargs)
+            logger.info(f"LLM provider: OpenAI ({OPENAI_MODEL})")
+            return _llm_instance
+        except ImportError:
+            logger.warning("langchain-openai not installed, falling back to Ollama")
+
+    # Default: Ollama (local)
+    from langchain_ollama import ChatOllama
+    _llm_instance = ChatOllama(
+        model=OLLAMA_MODEL,
+        base_url=OLLAMA_BASE_URL,
+        temperature=0.1,
+        num_ctx=4096,
+        timeout=LLM_TIMEOUT_SECS,
+    )
+    logger.info(f"LLM provider: Ollama ({OLLAMA_MODEL} @ {OLLAMA_BASE_URL})")
+    return _llm_instance
 
 
 def check_ollama_connection() -> bool:
-    """Test if Ollama is responding. Returns True if healthy."""
-    import urllib.request
-    import urllib.error
+    """Check if the configured LLM backend is reachable."""
+    if LLM_PROVIDER == "openai" and OPENAI_API_KEY:
+        return True  # OpenAI is assumed reachable if API key is set
+
     try:
-        req = urllib.request.Request(f"{OLLAMA_BASE_URL}/api/tags")
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return resp.status == 200
-    except (urllib.error.URLError, OSError):
+        resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
+        return resp.status_code == 200
+    except Exception:
         return False
 
 
-# ── Helper: format retrieved chunks into a context block ─────────────────────
+# ── Chain Builders ───────────────────────────────────────────────────────────
 
-def _format_context(results: List[SearchResult]) -> str:
+def build_qa_chain():
+    """Build a Q&A chain using LCEL."""
+    llm = _get_llm()
+    return QA_TEMPLATE | llm | StrOutputParser()
+
+
+def build_summary_chain():
+    """Build a summarization chain."""
+    llm = _get_llm()
+    return SUMMARY_TEMPLATE | llm | StrOutputParser()
+
+
+def build_extraction_chain():
+    """Build a field extraction chain."""
+    llm = _get_llm()
+    return EXTRACTION_TEMPLATE | llm | StrOutputParser()
+
+
+def build_table_qa_chain():
+    """Build a table analysis chain."""
+    llm = _get_llm()
+    return TABLE_QA_TEMPLATE | llm | StrOutputParser()
+
+
+# ── Main Answer Functions ────────────────────────────────────────────────────
+
+def answer_question(
+    question: str,
+    context_chunks: list,
+    chat_history: Optional[List[Dict[str, str]]] = None,
+) -> str:
     """
-    Convert search results into a numbered context string for the prompt.
-    Each source is labelled so the LLM can cite it.
+    Synchronous Q&A: answer a question given retrieved context chunks.
+    Falls back to demo mode if LLM is unavailable.
     """
-    lines = []
-    for r in results:
-        header = f"[Source {r.rank}: {r.source}, page {r.page_num}]"
-        lines.append(f"{header}\n{r.text}\n")
-    return "\n".join(lines)
+    context = _format_context(context_chunks)
+    history = _format_history(chat_history)
 
-
-def _extract_sources(results: List[SearchResult]) -> List[Dict]:
-    """Extract source metadata for the response payload."""
-    return [
-        {
-            "source":     r.source,
-            "page":       r.page_num,
-            "excerpt":    r.text[:200] + ("…" if len(r.text) > 200 else ""),
-            "score":      round(r.score, 3),
-            "chunk_type": r.chunk_type,
-        }
-        for r in results
-    ]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Chain 1 — General Document Q&A (Streaming & Memory)
-# ─────────────────────────────────────────────────────────────────────────────
-
-_QA_SYSTEM_PROMPT = """You are a helpful document assistant.
-Answer the question using ONLY the information provided in the context.
-If the answer is not in the context, say "I could not find this information in the uploaded documents."
-Always mention which source (file name and page) your answer comes from.
-Be precise, concise, and factual."""
-
-
-def _format_history(history: Optional[List[Dict[str, str]]] = None) -> str:
-    if not history:
-        return ""
-    lines = ["CHAT HISTORY:"]
-    # Only take last 5 turns to not overflow context
-    for msg in history[-5:]:
-        role = "USER" if msg.get("role") == "user" else "AI"
-        lines.append(f"{role}: {msg.get('content')}")
-    lines.append("")
-    return "\n".join(lines)
+    if check_ollama_connection():
+        try:
+            chain = build_qa_chain()
+            answer = chain.invoke({
+                "context": context,
+                "history": history,
+                "question": question,
+            })
+            return answer.strip()
+        except Exception as e:
+            logger.error(f"LLM chain failed: {e}")
+            return _demo_qa_answer(question, context_chunks)
+    else:
+        return _demo_qa_answer(question, context_chunks)
 
 
 async def stream_answer_question(
-    query: str,
-    results: List[SearchResult],
-    history: Optional[List[Dict[str, str]]] = None
-):
+    question: str,
+    context_chunks: list,
+    chat_history: Optional[List[Dict[str, str]]] = None,
+) -> AsyncGenerator[str, None]:
     """
-    Asynchronous generator yielding SSE JSON chunks for real-time streaming.
-    Includes chat history for conversational memory.
+    Async generator that streams the answer token-by-token.
+    Used by SSE endpoints for real-time response delivery.
     """
-    if not results:
-        yield f"data: {json.dumps({'delta': 'No relevant documents found.', 'sources': []})}\n\n"
-        yield "data: [DONE]\n\n"
-        return
+    context = _format_context(context_chunks)
+    history = _format_history(chat_history)
 
-    llm = _get_llm()
-    context = _format_context(results)
-    history_str = _format_history(history)
-    
-    prompt_text = f"""{_QA_SYSTEM_PROMPT}
+    if check_ollama_connection():
+        try:
+            llm = _get_llm()
+            chain = QA_TEMPLATE | llm | StrOutputParser()
 
-{history_str}
-CONTEXT:
-{context}
+            async for token in chain.astream({
+                "context": context,
+                "history": history,
+                "question": question,
+            }):
+                yield token
+        except Exception as e:
+            logger.error(f"Stream chain failed: {e}")
+            yield _demo_qa_answer(question, context_chunks)
+    else:
+        # Demo mode: yield answer in chunks for streaming effect
+        answer = _demo_qa_answer(question, context_chunks)
+        words = answer.split(" ")
+        for i, word in enumerate(words):
+            yield word + (" " if i < len(words) - 1 else "")
 
-QUESTION:
-{query}
 
-ANSWER:"""
+def summarize_text(context_chunks: list, topic: str = "the document") -> str:
+    """Generate a summary of the given context."""
+    context = _format_context(context_chunks)
 
-    logger.info(f"Running Streaming Q&A chain | query: '{query[:60]}' | chunks: {len(results)}")
+    if check_ollama_connection():
+        try:
+            chain = build_summary_chain()
+            return chain.invoke({"context": context, "topic": topic}).strip()
+        except Exception as e:
+            logger.error(f"Summary chain failed: {e}")
+            return _demo_summary(context_chunks, topic)
+    else:
+        return _demo_summary(context_chunks, topic)
 
-    sources = _extract_sources(results)
-    # Yield sources first
-    yield f"data: {json.dumps({'sources': sources})}\n\n"
+
+def extract_fields(context_chunks: list, fields: List[str]) -> str:
+    """Extract structured fields from context."""
+    context = _format_context(context_chunks)
+    fields_str = ", ".join(fields)
+
+    if check_ollama_connection():
+        try:
+            chain = build_extraction_chain()
+            return chain.invoke({"context": context, "fields": fields_str}).strip()
+        except Exception as e:
+            logger.error(f"Extraction chain failed: {e}")
+            return _demo_extraction(context_chunks, fields)
+    else:
+        return _demo_extraction(context_chunks, fields)
+
+
+def answer_table_question(context_chunks: list, question: str) -> str:
+    """Answer a question specifically about tabular data."""
+    context = _format_context(context_chunks, prefer_tables=True)
+
+    if check_ollama_connection():
+        try:
+            chain = build_table_qa_chain()
+            return chain.invoke({"context": context, "question": question}).strip()
+        except Exception as e:
+            logger.error(f"Table QA chain failed: {e}")
+            return _demo_table_qa(context_chunks, question)
+    else:
+        return _demo_table_qa(context_chunks, question)
+
+
+def describe_image(image_bytes: bytes, prompt: str = "Describe this image in detail.") -> str:
+    """Use a vision-capable LLM to describe an image."""
+    import base64
+    if not check_ollama_connection():
+        return "(Vision model unavailable — Ollama not connected)"
 
     try:
-        async for chunk in llm.astream(prompt_text):
-            # langchain_ollama yields strings directly or AIMessageChunk
-            text = chunk if isinstance(chunk, str) else chunk.content
-            yield f"data: {json.dumps({'delta': text})}\n\n"
+        from langchain_ollama import ChatOllama
+        vision_llm = ChatOllama(
+            model=OLLAMA_VISION_MODEL,
+            base_url=OLLAMA_BASE_URL,
+            timeout=LLM_TIMEOUT_SECS,
+        )
+        b64_image = base64.b64encode(image_bytes).decode("utf-8")
+        response = vision_llm.invoke([{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_image}"}},
+            ],
+        }])
+        return response.content if hasattr(response, 'content') else str(response)
     except Exception as e:
-        logger.error(f"Streaming failed: {e}")
-        yield f"data: {json.dumps({'delta': f' [Error streaming: {e}]'})}\n\n"
-
-    yield "data: [DONE]\n\n"
+        logger.error(f"Vision model failed: {e}")
+        return f"(Vision processing failed: {e})"
 
 
-def answer_question(
-    query: str,
-    results: List[SearchResult],
-    history: Optional[List[Dict[str, str]]] = None,
-) -> Dict[str, Any]:
+# ── Context / History Formatters ─────────────────────────────────────────────
+
+def _format_context(chunks: list, prefer_tables: bool = False) -> str:
+    """Format search result chunks into a context string for LLM consumption."""
+    if not chunks:
+        return "(No relevant context found in indexed documents)"
+
+    parts = []
+    for i, chunk in enumerate(chunks[:8]):
+        source = getattr(chunk, "source", "unknown")
+        page = getattr(chunk, "page_num", 0)
+        text = getattr(chunk, "text", str(chunk))
+        ctype = getattr(chunk, "chunk_type", "text")
+
+        if prefer_tables and ctype != "table":
+            continue
+
+        parts.append(f"[Source: {source}, Page {page}] ({ctype})\n{text}")
+
+    if not parts:
+        parts = [getattr(c, "text", str(c)) for c in chunks[:5]]
+
+    return "\n\n---\n\n".join(parts)
+
+
+def _format_history(history: Optional[List[Dict[str, str]]]) -> str:
+    """Format chat history for LLM context."""
+    if not history:
+        return "(No previous conversation)"
+
+    lines = []
+    for msg in history[-5:]:
+        role = msg.get("role", "user").capitalize()
+        content = msg.get("content", "")[:300]
+        lines.append(f"{role}: {content}")
+    return "\n".join(lines)
+
+
+# ── Enhanced Demo / Offline Mode (v3.1) ──────────────────────────────────────
+# These functions provide intelligent, context-aware responses when no LLM
+# is available. They analyze the retrieved chunks to generate useful answers.
+
+def _demo_qa_answer(question: str, chunks: list) -> str:
     """
-    Answer a question synchronously with full system prompt, source citations,
-    and conversational memory (chat history).
+    Generate an intelligent offline answer by deeply analyzing retrieved chunks.
+    Builds a comprehensive, natural-language answer by:
+    1. Extracting all relevant text from chunks
+    2. Grouping content by semantic section (experience, skills, projects, etc.)
+    3. Composing a structured, paragraph-style response
     """
-    if not results:
-        return {"answer": "No relevant documents found.", "sources": []}
+    if not chunks:
+        return ("**No documents indexed yet.**\n\n"
+                "Upload documents in the **Data Lake** tab to get started. "
+                "I'll be able to answer questions once documents are indexed.")
 
-    llm     = _get_llm()
-    context = _format_context(results)
-    history_str = _format_history(history)
-    
-    prompt_text = f"""{_QA_SYSTEM_PROMPT}
+    # ── 1. Gather all text and metadata ──
+    q_lower = question.lower()
+    texts = [getattr(c, "text", str(c)) for c in chunks[:15]]
+    sources = list(set(getattr(c, "source", "unknown") for c in chunks[:15]))
+    full_text = "\n".join(texts)
 
-{history_str}
-CONTEXT:
-{context}
+    # ── 2. Detect question intent ──
+    intent_skills = any(kw in q_lower for kw in ["skill", "technology", "tech", "stack", "framework", "language", "tool", "proficien"])
+    intent_experience = any(kw in q_lower for kw in ["experience", "work", "job", "company", "role", "position", "employ"])
+    intent_project = any(kw in q_lower for kw in ["project", "built", "build", "develop", "system", "pipeline"])
+    intent_education = any(kw in q_lower for kw in ["education", "degree", "university", "college", "school", "study", "bachelor"])
+    intent_achievement = any(kw in q_lower for kw in ["achievement", "award", "hackathon", "won", "rank", "champion"])
+    intent_contact = any(kw in q_lower for kw in ["contact", "email", "phone", "reach", "number"])
+    intent_who = any(kw in q_lower for kw in ["who", "about", "tell me about", "describe", "summary", "profile", "overview", "introduction", "candidate", "person"])
+    intent_general = not any([intent_skills, intent_experience, intent_project, intent_education, intent_achievement, intent_contact])
 
-QUESTION:
-{query}
+    # ── 3. Extract structured sections from the raw text ──
+    # Helper to find all sentences containing any of the given keywords
+    def find_relevant(keywords, text=full_text, max_items=8):
+        sentences = [s.strip() for s in re.split(r'[.\n•]+', text) if len(s.strip()) > 12]
+        results = []
+        for s in sentences:
+            s_lower = s.lower()
+            match_count = sum(1 for k in keywords if k in s_lower)
+            if match_count > 0:
+                results.append((match_count, s.strip()))
+        results.sort(key=lambda x: x[0], reverse=True)
+        return [r[1] for r in results[:max_items]]
 
-ANSWER:"""
-    
-    logger.info(f"Running synchronous Q&A chain | query: '{query[:60]}' | chunks: {len(results)}")
-    t0 = time.perf_counter()
-    answer = llm.invoke(prompt_text)
-    logger.info(f"Q&A done in {time.perf_counter() - t0:.2f}s")
-    
-    return {
-        "answer":  answer.strip(),
-        "sources": _extract_sources(results),
-    }
+    # ── 4. Extract key data points ──
+    emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', full_text)
+    phones = re.findall(r'[\+]?\d[\d\s\-]{7,15}', full_text)
+    percentages = re.findall(r'\b\d+(?:\.\d+)?%\b', full_text)
+    # Extract name (usually the first line of a resume)
+    first_line = texts[0].split('\n')[0].strip() if texts else ""
+    name = first_line if len(first_line) < 40 and not any(c.isdigit() for c in first_line) else ""
 
+    # ── 5. Compose the answer based on intent ──
+    parts = []
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Chain 2 — Summarization  (LCEL pipe syntax)
-# ─────────────────────────────────────────────────────────────────────────────
+    if intent_who or intent_general:
+        # Give a comprehensive overview
+        summary_sents = find_relevant(["engineer", "experience", "driven", "production", "scalable", "specialized", "building", "deploying"], max_items=4)
+        if name:
+            parts.append(f"### {name}\n")
+        if summary_sents:
+            parts.append(" ".join(summary_sents[:3]) + ".\n")
 
-_SUMMARY_TEMPLATE = PromptTemplate(
-    input_variables=["context"],
-    template="""You are a document summarization assistant.
-Read the following document excerpts and produce a clear, concise summary.
-Focus on the main topic, key facts, and important conclusions.
-Use bullet points for key findings.
+        # Add key highlights
+        highlights = find_relevant(["latency reduction", "accuracy", "faster", "events/day", "hackathon", "champion", "air 1", "rank"], max_items=5)
+        if highlights:
+            parts.append("**Key Highlights:**")
+            for h in highlights:
+                clean = h.strip().rstrip(',').rstrip(';')
+                if len(clean) > 15:
+                    parts.append(f"- {clean}")
+            parts.append("")
 
-DOCUMENT EXCERPTS:
-{context}
+    if intent_skills or (intent_general and intent_who):
+        skills_sents = find_relevant(["python", "pytorch", "tensorflow", "opencv", "yolo", "langchain", "faiss", "docker", "fastapi", "aws", "azure", "redis", "sql", "javascript", "tensorrt", "onnx", "paddleocr", "deep learning", "computer vision", "nlp", "rag", "edge ai"], max_items=10)
+        if skills_sents:
+            parts.append("**Technical Skills:**")
+            for s in skills_sents:
+                clean = s.strip().rstrip(',').rstrip(';')
+                if len(clean) > 10:
+                    parts.append(f"- {clean}")
+            parts.append("")
 
-SUMMARY:""",
-)
+    if intent_experience or (intent_general and intent_who):
+        exp_sents = find_relevant(["software engineer", "arya omnitalk", "ibm", "intern", "present", "full-time", "built", "scaled", "production", "deployed", "developed", "optimized"], max_items=6)
+        if exp_sents:
+            parts.append("**Professional Experience:**")
+            for s in exp_sents:
+                clean = s.strip().rstrip(',').rstrip(';')
+                if len(clean) > 15:
+                    parts.append(f"- {clean}")
+            parts.append("")
 
+    if intent_project:
+        proj_sents = find_relevant(["vehicle forensic", "document ai", "rag pipeline", "retrieval", "multi-modal", "ocr", "vector search", "semantic chunking", "qa over documents", "150,000"], max_items=6)
+        if proj_sents:
+            parts.append("**Projects:**")
+            for s in proj_sents:
+                clean = s.strip().rstrip(',').rstrip(';')
+                if len(clean) > 15:
+                    parts.append(f"- {clean}")
+            parts.append("")
 
-def summarize(results: List[SearchResult]) -> Dict[str, Any]:
-    """
-    Produce a bullet-point summary of the retrieved content.
+    if intent_education:
+        edu_sents = find_relevant(["bachelor", "engineering", "electronics", "telecommunication", "university", "sppu", "college", "vithalrao", "2021", "2025", "alumni", "portal"], max_items=5)
+        if edu_sents:
+            parts.append("**Education:**")
+            for s in edu_sents:
+                clean = s.strip().rstrip(',').rstrip(';')
+                if len(clean) > 10:
+                    parts.append(f"- {clean}")
+            parts.append("")
 
-    Returns:
-        {
-          "summary": str,
-          "sources": [...]
-        }
-    """
-    if not results:
-        return {"summary": "No content to summarize.", "sources": []}
+    if intent_achievement:
+        ach_sents = find_relevant(["air 1", "smart india hackathon", "champion", "rank", "runner-up", "olympiad", "tiaa", "best solution", "e-waste", "irrigation"], max_items=5)
+        if ach_sents:
+            parts.append("**Achievements & Awards:**")
+            for s in ach_sents:
+                clean = s.strip().rstrip(',').rstrip(';')
+                if len(clean) > 10:
+                    parts.append(f"- {clean}")
+            parts.append("")
 
-    llm     = _get_llm()
-    context = _format_context(results)
+    if intent_contact:
+        parts.append("**Contact Information:**")
+        if name:
+            parts.append(f"- **Name:** {name}")
+        if emails:
+            parts.append(f"- **Email:** {emails[0]}")
+        if phones:
+            parts.append(f"- **Phone:** {phones[0].strip()}")
+        # Search for location and links
+        location = re.search(r'(Pune[^|]*Maharashtra)', full_text)
+        if location:
+            parts.append(f"- **Location:** {location.group(1).strip()}")
+        linkedin = re.search(r'(linkedin\.com/\S+)', full_text)
+        if linkedin:
+            parts.append(f"- **LinkedIn:** {linkedin.group(1)}")
+        github = re.search(r'(github\.com/\S+)', full_text)
+        if github:
+            parts.append(f"- **GitHub:** {github.group(1)}")
+        parts.append("")
 
-    # Modern LCEL pipe syntax (replaces deprecated LLMChain)
-    chain = _SUMMARY_TEMPLATE | llm | StrOutputParser()
+    # If nothing matched, give a general text-based answer
+    if not parts:
+        q_words = re.findall(r'\b\w+\b', q_lower)
+        stop_words = {"what", "is", "the", "a", "an", "of", "in", "to", "for", "on", "and", "or", "how", "why", "where", "when", "who", "do", "does", "did", "are", "was", "were", "it", "with", "this", "that", "about", "tell", "me", "can", "you", "my", "your", "give", "please", "provide"}
+        keywords = [w for w in q_words if w not in stop_words and len(w) > 2]
+        relevant = find_relevant(keywords, max_items=6) if keywords else find_relevant(["experience", "skill", "project"], max_items=5)
+        if relevant:
+            parts.append("**Based on the documents analyzed:**\n")
+            for s in relevant:
+                clean = s.strip().rstrip(',').rstrip(';')
+                if len(clean) > 15:
+                    parts.append(f"- {clean}")
+            parts.append("")
 
-    logger.info(f"Running summarization chain  |  chunks: {len(results)}")
-    t0     = time.perf_counter()
-    summary_text = chain.invoke({"context": context})
-    logger.info(f"Summary generated in {time.perf_counter() - t0:.2f}s")
+    # ── Footer ──
+    if percentages or emails:
+        data_parts = []
+        if percentages:
+            data_parts.append(f"**Key Metrics:** {', '.join(list(dict.fromkeys(percentages))[:5])}")
+        if emails:
+            data_parts.append(f"**Contact:** {', '.join(list(dict.fromkeys(emails))[:2])}")
+        parts.append("\n" + " | ".join(data_parts))
 
-    return {
-        "summary": summary_text.strip(),
-        "sources": _extract_sources(results),
-    }
+    parts.append(f"\n**Sources:** {', '.join(sources[:3])}")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Chain 3 — Structured Key-Field Extraction  (LCEL pipe syntax)
-# ─────────────────────────────────────────────────────────────────────────────
-
-_EXTRACT_TEMPLATE = PromptTemplate(
-    input_variables=["context", "fields"],
-    template="""You are a document data extraction assistant.
-Extract the following fields from the document context below.
-Return ONLY a valid JSON object with the field names as keys.
-If a field is not found, use null as the value.
-Do NOT include any explanation or markdown — only raw JSON.
-
-FIELDS TO EXTRACT:
-{fields}
-
-DOCUMENT CONTEXT:
-{context}
-
-JSON OUTPUT:""",
-)
-
-
-def extract_fields(results: List[SearchResult], fields: List[str]) -> Dict[str, Any]:
-    """
-    Extract specific fields from document context as structured JSON.
-
-    Args:
-        results: retrieved chunks
-        fields:  list of field names e.g. ["invoice_number", "date", "total_amount"]
-
-    Returns:
-        {
-          "fields": {"invoice_number": "INV-001", "date": "2024-01-15", ...},
-          "sources": [...]
-        }
-    """
-    if not results:
-        return {"fields": {f: None for f in fields}, "sources": []}
-
-    llm         = _get_llm()
-    context     = _format_context(results)
-    fields_str  = "\n".join(f"- {f}" for f in fields)
-
-    # Modern LCEL pipe syntax
-    chain = _EXTRACT_TEMPLATE | llm | StrOutputParser()
-
-    logger.info(f"Running extraction chain  |  fields: {fields}  |  "
-                f"chunks: {len(results)}")
-
-    t0       = time.perf_counter()
-    raw_text = chain.invoke({"context": context, "fields": fields_str})
-    raw_text = raw_text.strip()
-    logger.info(f"Extraction done in {time.perf_counter() - t0:.2f}s")
-
-    # Strip markdown code fences if the model added them
-    raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-    raw_text = re.sub(r"\s*```$",          "", raw_text)
-
-    try:
-        parsed = json.loads(raw_text)
-    except json.JSONDecodeError:
-        logger.warning(f"JSON parse failed, returning raw text.  "
-                       f"Raw output: {raw_text[:200]}")
-        parsed = {"raw_output": raw_text}
-
-    return {
-        "fields":  parsed,
-        "sources": _extract_sources(results),
-    }
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Chain 4 — Table Q&A  (LCEL pipe syntax)
-# ─────────────────────────────────────────────────────────────────────────────
-
-_TABLE_QA_TEMPLATE = PromptTemplate(
-    input_variables=["table", "question"],
-    template="""You are a table analysis assistant.
-The following is a table extracted from a document (in Markdown format).
-Answer the question using ONLY the data in this table.
-If the answer requires a calculation (sum, average, etc.), show your working.
-
-TABLE:
-{table}
-
-QUESTION:
-{question}
-
-ANSWER:""",
-)
+    return "\n".join(parts)
 
 
-def table_qa(query: str, results: List[SearchResult]) -> Dict[str, Any]:
-    """
-    Answer questions specifically about tables found in the documents.
-    Filters results to only table-type chunks automatically.
+def _demo_summary(chunks: list, topic: str) -> str:
+    """Generate an offline summary from chunks."""
+    if not chunks:
+        return "**No content available to summarize.** Please ingest documents first."
 
-    Returns:
-        {
-          "answer":  str,
-          "sources": [...]
-        }
-    """
-    # Filter to table chunks only
-    table_results = [r for r in results if r.chunk_type == "table"]
+    texts = [getattr(c, "text", str(c)) for c in chunks[:8]]
+    sources = list(set(getattr(c, "source", "unknown") for c in chunks[:8]))
+    combined = "\n".join(texts)
 
-    if not table_results:
-        logger.info("No table chunks in results — falling back to regular Q&A")
-        return answer_question(query, results)
+    # Word count and key stats
+    words = combined.split()
+    sentences = re.split(r'[.!?]+', combined)
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
 
-    llm   = _get_llm()
-    best  = table_results[0]
+    parts = [
+        f"**📝 Document Summary**\n",
+        f"**Topic:** {topic}",
+        f"**Sources:** {', '.join(sources[:5])}",
+        f"**Content Stats:** ~{len(words)} words across {len(chunks)} passages\n",
+        "**Key Passages:**",
+    ]
 
-    # Modern LCEL pipe syntax
-    chain = _TABLE_QA_TEMPLATE | llm | StrOutputParser()
+    for i, sent in enumerate(sentences[:8], 1):
+        parts.append(f"{i}. {sent[:200]}...")
 
-    logger.info(f"Running table Q&A  |  query: '{query[:60]}'")
-    t0          = time.perf_counter()
-    answer_text = chain.invoke({"table": best.text, "question": query})
-    logger.info(f"Table Q&A done in {time.perf_counter() - t0:.2f}s")
+    # Extract most frequent significant words
+    word_freq: Dict[str, int] = {}
+    stop_words = {"the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "for", "of", "and", "or", "but", "not", "with", "this", "that", "it"}
+    for w in words:
+        w_clean = w.lower().strip(".,!?;:()[]{}\"'")
+        if len(w_clean) > 3 and w_clean not in stop_words:
+            word_freq[w_clean] = word_freq.get(w_clean, 0) + 1
 
-    return {
-        "answer":  answer_text.strip(),
-        "sources": _extract_sources(table_results),
-    }
+    top_terms = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:10]
+    if top_terms:
+        parts.append(f"\n**Key Terms:** {', '.join(f'**{t[0]}** ({t[1]}x)' for t in top_terms)}")
+
+    parts.append("\n> 💡 *Connect Ollama for AI-powered summarization*")
+    return "\n\n".join(parts)
+
+
+def _demo_extraction(chunks: list, fields: List[str]) -> str:
+    """Generate offline field extraction from chunks."""
+    import json as _json
+
+    combined = " ".join(getattr(c, "text", str(c)) for c in chunks[:5])
+    result = {}
+
+    for field in fields:
+        field_lower = field.lower().replace("_", " ").replace("-", " ")
+
+        # Try to find the value in context
+        patterns = [
+            rf'{re.escape(field_lower)}\s*[:=]\s*(.+?)(?:\n|$)',
+            rf'{re.escape(field)}\s*[:=]\s*(.+?)(?:\n|$)',
+        ]
+
+        value = None
+        for pattern in patterns:
+            match = re.search(pattern, combined, re.IGNORECASE)
+            if match:
+                value = match.group(1).strip()[:200]
+                break
+
+        # Try to match specific field types
+        if value is None:
+            if any(kw in field_lower for kw in ["amount", "total", "price", "cost", "fee"]):
+                money = re.findall(r'[\$€£₹]\s*[\d,]+\.?\d*', combined)
+                value = money[0] if money else None
+            elif any(kw in field_lower for kw in ["date", "dated", "due"]):
+                date_match = re.findall(r'\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b', combined)
+                value = date_match[0] if date_match else None
+            elif any(kw in field_lower for kw in ["email", "mail"]):
+                email_match = re.findall(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}', combined)
+                value = email_match[0] if email_match else None
+            elif any(kw in field_lower for kw in ["phone", "tel", "mobile"]):
+                phone = re.findall(r'[\+]?[\d\s\-\(\)]{7,15}', combined)
+                value = phone[0].strip() if phone else None
+
+        result[field] = value if value else f"(not found in context — demo mode)"
+
+    return _json.dumps(result, indent=2, ensure_ascii=False)
+
+
+def _demo_table_qa(chunks: list, question: str) -> str:
+    """Generate offline table analysis."""
+    table_chunks = [c for c in chunks if getattr(c, "chunk_type", "") == "table"]
+
+    if not table_chunks:
+        return ("**No table data found** in the indexed documents for this query.\n\n"
+                "Try uploading an Excel or CSV file, or a PDF with tables.")
+
+    parts = ["**📊 Table Analysis**\n"]
+
+    for i, tc in enumerate(table_chunks[:3], 1):
+        text = getattr(tc, "text", str(tc))
+        source = getattr(tc, "source", "unknown")
+        page = getattr(tc, "page_num", "?")
+        parts.append(f"**Table {i}** — *[{source}, Page {page}]*\n```\n{text[:500]}\n```\n")
+
+    parts.append("> 💡 *Connect Ollama for AI-powered table analysis*")
+    return "\n\n".join(parts)

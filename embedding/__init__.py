@@ -5,7 +5,7 @@ from embedding.vector_store import (
     index_chunks,
     load_index,
     similarity_search,
-    reset_index,
+    clear_index,
 )
 
 __all__ = [
@@ -14,5 +14,5 @@ __all__ = [
     "index_chunks",
     "load_index",
     "similarity_search",
-    "reset_index",
+    "clear_index",
 ]

@@ -1,6 +1,7 @@
 # utils/sessions.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Persistent chat sessions using SQLite for cross-browser session persistence.
+# v3.1 — Fixed datetime.utcnow() deprecation, fixed get_session query
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ import json
 import sqlite3
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -64,7 +65,7 @@ class SessionManager:
     def create_session(self, title: str = "Untitled") -> Dict[str, Any]:
         """Create a new chat session."""
         session_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         conn = self._get_conn()
         conn.execute(
             "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
@@ -87,12 +88,19 @@ class SessionManager:
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get a session by ID, including message count."""
         conn = self._get_conn()
-        row = conn.execute(
-            "SELECT s.*, COUNT(m.id) as message_count FROM sessions s "
-            "LEFT JOIN messages m ON m.session_id = s.id WHERE s.id = ?",
+        # Fixed: use separate queries to avoid LEFT JOIN returning empty row
+        session_row = conn.execute(
+            "SELECT * FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        if not session_row:
+            return None
+        result = dict(session_row)
+        count_row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM messages WHERE session_id = ?",
             (session_id,),
         ).fetchone()
-        return dict(row) if row and row["id"] else None
+        result["message_count"] = count_row["cnt"] if count_row else 0
+        return result
 
     def add_message(
         self,
@@ -106,7 +114,7 @@ class SessionManager:
         if not self.get_session(session_id):
             raise ValueError(f"Session '{session_id}' not found")
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         sources_json = json.dumps(sources or [])
         conn = self._get_conn()
         cursor = conn.execute(
@@ -158,7 +166,7 @@ class SessionManager:
     def update_title(self, session_id: str, title: str) -> bool:
         """Update session title."""
         conn = self._get_conn()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         result = conn.execute(
             "UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?",
             (title, now, session_id),

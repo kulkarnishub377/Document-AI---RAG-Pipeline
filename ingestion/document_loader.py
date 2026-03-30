@@ -1,20 +1,8 @@
 # ingestion/document_loader.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 — Document Ingestion
-#
-# Responsibilities:
-#   • Detect file type (PDF native / PDF scanned / image / DOCX)
-#   • Route to the correct parser
-#   • Return a unified list of PageData objects (page_num, text, tables, source)
-#   • Auto-detect document language for optimal OCR
-#
-# Supported formats:
-#   PDF (native text) → pdfplumber
-#   PDF (scanned)     → PaddleOCR PP‑OCRv4
-#   Images            → Vision LLM (llava) with PaddleOCR fallback
-#   DOCX              → python-docx
-#   TXT / MD          → plain read
-#   Web URLs          → BeautifulSoup
+# v3.1 — Lazy imports for heavy modules (P4), file handle leak fix (Bug #7),
+#         retry logic for URL parsing (Bug #13)
 # ─────────────────────────────────────────────────────────────────────────────
 
 from __future__ import annotations
@@ -25,15 +13,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-import pdfplumber
-import fitz                          # PyMuPDF
-from docx import Document as DocxDoc
 from loguru import logger
 
 from config import (
     OCR_LANGUAGE, OCR_USE_ANGLE_CLS, ALLOWED_EXTENSIONS,
     MAX_FILE_SIZE_MB, MULTILINGUAL_MODE, OLLAMA_VISION_MODEL,
 )
+
+# v3.1 (P4): Lazy-import heavy modules — only load when needed
+def _import_pdfplumber():
+    import pdfplumber
+    return pdfplumber
+
+def _import_fitz():
+    import fitz
+    return fitz
+
+def _import_docx():
+    from docx import Document as DocxDoc
+    return DocxDoc
 
 
 # ── Data container returned by every parser ──────────────────────────────────
@@ -95,7 +93,7 @@ def _get_ocr(lang: str = None):
 
 # ── Helper: is a PDF page text-selectable? ───────────────────────────────────
 
-def _page_has_native_text(page: fitz.Page, min_chars: int = 20) -> bool:
+def _page_has_native_text(page, min_chars: int = 20) -> bool:
     """Returns True if the page already has enough selectable text."""
     return len(page.get_text("text").strip()) >= min_chars
 
@@ -104,6 +102,7 @@ def _page_has_native_text(page: fitz.Page, min_chars: int = 20) -> bool:
 
 def _parse_native_pdf(path: Path) -> List[PageData]:
     """Extract text and tables from a text-selectable PDF using pdfplumber."""
+    pdfplumber = _import_pdfplumber()
     pages: List[PageData] = []
     with pdfplumber.open(path) as pdf:
         for i, page in enumerate(pdf.pages, start=1):
@@ -126,47 +125,52 @@ def _parse_native_pdf(path: Path) -> List[PageData]:
 # ── Parser: scanned PDF / image  (OCR path) ──────────────────────────────────
 
 def _parse_scanned_pdf(path: Path) -> List[PageData]:
-    """Render each PDF page as an image and run PaddleOCR on it."""
+    """Render each PDF page as an image and run PaddleOCR on it.
+    v3.1: Fixed file handle leak with try/finally (Bug #7).
+    """
+    fitz = _import_fitz()
     doc = fitz.open(str(path))
     pages: List[PageData] = []
 
-    # Try to detect language from any native text first
-    ocr_lang = OCR_LANGUAGE
-    if MULTILINGUAL_MODE:
-        for page in doc:
-            sample_text = page.get_text("text").strip()
-            if len(sample_text) > 20:
-                detected = _detect_language(sample_text)
-                ocr_lang = _get_ocr_lang(detected)
-                break
+    try:
+        # Try to detect language from any native text first
+        ocr_lang = OCR_LANGUAGE
+        if MULTILINGUAL_MODE:
+            for page in doc:
+                sample_text = page.get_text("text").strip()
+                if len(sample_text) > 20:
+                    detected = _detect_language(sample_text)
+                    ocr_lang = _get_ocr_lang(detected)
+                    break
+            doc.close()
+            doc = fitz.open(str(path))
+
+        ocr = _get_ocr(ocr_lang)
+
+        for i, page in enumerate(doc, start=1):
+            # Render at 2× resolution for better OCR accuracy
+            mat  = fitz.Matrix(2.0, 2.0)
+            pix  = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
+            img_bytes = pix.tobytes("png")
+
+            result = ocr.ocr(img_bytes, cls=True)
+            lines  = []
+            if result and result[0]:
+                for line in result[0]:
+                    text_str, conf = line[1]
+                    if conf > 0.5:
+                        lines.append(text_str)
+
+            text = "\n".join(lines)
+            lang = _detect_language(text) if MULTILINGUAL_MODE else ocr_lang
+            pages.append(PageData(
+                source=path.name, page_num=i,
+                text=text, tables=[], method="ocr",
+                language=lang,
+            ))
+    finally:
         doc.close()
-        doc = fitz.open(str(path))
 
-    ocr = _get_ocr(ocr_lang)
-
-    for i, page in enumerate(doc, start=1):
-        # Render at 2× resolution for better OCR accuracy
-        mat  = fitz.Matrix(2.0, 2.0)
-        pix  = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
-        img_bytes = pix.tobytes("png")
-
-        result = ocr.ocr(img_bytes, cls=True)
-        lines  = []
-        if result and result[0]:
-            for line in result[0]:
-                text_str, conf = line[1]
-                if conf > 0.5:
-                    lines.append(text_str)
-
-        text = "\n".join(lines)
-        lang = _detect_language(text) if MULTILINGUAL_MODE else ocr_lang
-        pages.append(PageData(
-            source=path.name, page_num=i,
-            text=text, tables=[], method="ocr",
-            language=lang,
-        ))
-
-    doc.close()
     logger.debug(f"Scanned PDF parsed (OCR): {len(pages)} pages from {path.name}")
     return pages
 
@@ -229,6 +233,7 @@ def _parse_image_vision(path: Path) -> List[PageData]:
 
 def _parse_docx(path: Path) -> List[PageData]:
     """Extract paragraphs and tables from a Word document."""
+    DocxDoc = _import_docx()
     doc   = DocxDoc(str(path))
     paras = [p.text for p in doc.paragraphs if p.text.strip()]
 
@@ -373,8 +378,10 @@ def _parse_pptx(path: Path) -> List[PageData]:
 
 # ── Parser: Web URL ──────────────────────────────────────────────────────────
 
-def parse_url(url: str) -> List[PageData]:
-    """Fetch a web page and extract the text content using BeautifulSoup."""
+def parse_url(url: str, max_retries: int = 3) -> List[PageData]:
+    """Fetch a web page and extract text content using BeautifulSoup.
+    v3.1: Added retry logic with exponential backoff (Bug #13).
+    """
     try:
         import requests
         from bs4 import BeautifulSoup
@@ -382,23 +389,40 @@ def parse_url(url: str) -> List[PageData]:
         raise ImportError("Web crawling requires 'requests' and 'beautifulsoup4'. Run: pip install requests beautifulsoup4")
 
     logger.info(f"Fetching URL: {url}")
-    headers = {"User-Agent": "Mozilla/5.0 Document AI RAG Pipeline"}
-    resp = requests.get(url, headers=headers, timeout=10)
-    resp.raise_for_status()
+    headers = {"User-Agent": "Mozilla/5.0 Document AI RAG Pipeline/3.1"}
+
+    # v3.1 (Bug #13): Retry with exponential backoff
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(
+                url, headers=headers, timeout=15,
+                allow_redirects=True, stream=False,
+            )
+            resp.raise_for_status()
+            break
+        except requests.RequestException as e:
+            last_error = e
+            wait = 2 ** attempt
+            logger.warning(f"URL fetch attempt {attempt + 1}/{max_retries} failed: {e}. Retrying in {wait}s...")
+            import time as _time
+            _time.sleep(wait)
+    else:
+        raise ConnectionError(f"Failed to fetch URL after {max_retries} attempts: {last_error}")
 
     soup = BeautifulSoup(resp.text, "html.parser")
-    
+
     # Remove javascript, styles, and empty tags
     for script in soup(["script", "style", "nav", "footer", "header", "aside"]):
         script.decompose()
-        
+
     text = soup.get_text(separator="\n\n")
-    
+
     # Clean up empty lines
     lines = (line.strip() for line in text.splitlines())
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     cleaned_text = "\n".join(chunk for chunk in chunks if chunk)
-    
+
     # Use the domain + title as the source name
     from urllib.parse import urlparse
     domain = urlparse(url).netloc
@@ -416,7 +440,7 @@ def parse_url(url: str) -> List[PageData]:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def load_document(path: str | Path) -> List[PageData]:
+def load_document(path: str | Path, source_name: str = "") -> List[PageData]:
     """
     Auto-detect file type and return a list of PageData objects.
 
@@ -449,6 +473,7 @@ def load_document(path: str | Path) -> List[PageData]:
 
     if suffix == ".pdf":
         # Quick check: open with PyMuPDF and sample first 3 pages
+        fitz = _import_fitz()
         doc = fitz.open(str(path))
         sample_pages = min(3, len(doc))
         native_count = sum(
@@ -498,6 +523,12 @@ def load_document(path: str | Path) -> List[PageData]:
     total_chars = sum(len(p.text) for p in pages)
     total_tables = sum(len(p.tables) for p in pages)
     detected_langs = {p.language for p in pages if p.language != "unknown"}
+
+    # Override source name if provided (e.g. when filename differs from path)
+    if source_name:
+        for p in pages:
+            p.source = source_name
+
     logger.info(
         f"Document loaded in {elapsed:.2f}s — "
         f"{len(pages)} pages, {total_chars:,} chars, {total_tables} tables"

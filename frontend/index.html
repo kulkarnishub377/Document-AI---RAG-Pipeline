@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuAI Studio V3</title>
+    <title>DocuAI Studio V3.1</title>
+    <meta name="description" content="AI-powered document analysis pipeline with RAG, semantic search, and intelligent Q&A.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="/frontend/css/style.css">
 </head>
 <body>
 
-    <!-- Background Animated Shapes (for Glassmorphism effect) -->
+    <!-- Background Animated Shapes -->
     <div class="bg-shapes">
         <div class="shape shape-1"></div>
         <div class="shape shape-2"></div>
@@ -19,9 +21,9 @@
     </div>
 
     <div class="app-layout">
-        
+
         <!-- SIDEBAR -->
-        <aside class="sidebar glass-panel">
+        <aside class="sidebar glass-panel" id="sidebarPanel">
             <div class="sidebar-header">
                 <div class="logo">
                     <svg viewBox="0 0 24 24" fill="none" class="logo-svg" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -35,10 +37,13 @@
                 <div class="nav-section">
                     <div class="nav-title">WORKSPACE</div>
                     <button class="nav-btn active" data-target="view-chat">
-                        <span class="nav-icon">💬</span> Chat API
+                        <span class="nav-icon">💬</span> Chat Q&A
                     </button>
                     <button class="nav-btn" data-target="view-documents">
                         <span class="nav-icon">📂</span> Data Lake
+                    </button>
+                    <button class="nav-btn" data-target="view-search">
+                        <span class="nav-icon">🔍</span> Semantic Search
                     </button>
                 </div>
 
@@ -53,6 +58,16 @@
                     <button class="nav-btn" data-target="view-summarize">
                         <span class="nav-icon">📝</span> Smart Summary
                     </button>
+                    <button class="nav-btn" data-target="view-batch">
+                        <span class="nav-icon">📑</span> Batch Q&A
+                    </button>
+                    <button class="nav-btn" data-target="view-kg">
+                        <span class="nav-icon">🕸️</span> Knowledge Graph
+                    </button>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">INSIGHTS</div>
                     <button class="nav-btn" data-target="view-analytics">
                         <span class="nav-icon">📊</span> Pipeline Analytics
                     </button>
@@ -64,7 +79,6 @@
                 <div class="nav-section flex-1 session-manager">
                     <div class="nav-title">SESSIONS</div>
                     <div class="session-list" id="sessionList">
-                        <!-- Javascript populated sessions -->
                         <div class="session-item">Default Session</div>
                     </div>
                 </div>
@@ -75,33 +89,31 @@
             </div>
         </aside>
 
+        <!-- MOBILE SIDEBAR TOGGLE (v3.1 — F18) -->
+        <button class="mobile-sidebar-toggle" id="sidebarToggleBtn" title="Toggle Sidebar">☰</button>
+
         <!-- MAIN AREA -->
         <main class="main-content">
-            
+
             <!-- TOPBAR -->
             <header class="topbar glass-panel">
                 <div class="topbar-left">
-                    <h2 class="view-title" id="currentViewTitle">Chat API</h2>
+                    <h2 class="view-title" id="currentViewTitle">Chat Q&A</h2>
                 </div>
-
                 <div class="topbar-right">
                     <div class="status-indicator">
                         <span class="pulse-dot" id="systemPulse"></span>
                         <span id="systemStatusText">System Online</span>
                     </div>
-
                     <div class="metric-pill">
                         <span class="metric-label">Vectors</span>
                         <span class="metric-val" id="globalVectorCount">0</span>
                     </div>
-                    
                     <button class="icon-btn" id="themeToggleBtn" title="Toggle Light/Dark Theme">
                         <span class="theme-icon dark-visible">☀️</span>
                         <span class="theme-icon light-visible">🌙</span>
                     </button>
-
                     <button class="icon-btn" id="shortcutsBtn" title="Keyboard Shortcuts">⌨️</button>
-                    
                     <button class="icon-btn" id="settingsBtn" title="System Settings">⚙️</button>
                 </div>
             </header>
@@ -113,21 +125,19 @@
                 <section class="view-panel active" id="view-chat">
                     <div class="chat-container glass-panel">
                         <div class="chat-messages" id="chatStream">
-                            
                             <div class="chat-empty-state" id="chatEmptyState">
                                 <div class="empty-icon">
-                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>
                                 </div>
                                 <h3>DocuAI Assistant Ready</h3>
-                                <p>Ask any question about your embedded documentation using plain English. Enabled with persistent context and RAG.</p>
+                                <p>Ask any question about your embedded documentation using plain English. Powered by RAG with persistent context.</p>
                                 <div class="quick-prompts">
                                     <button class="pill-btn suggestion-btn">Summarize the latest document</button>
                                     <button class="pill-btn suggestion-btn">Extract all financial figures</button>
+                                    <button class="pill-btn suggestion-btn">What are the key findings?</button>
                                 </div>
                             </div>
-
                         </div>
-                        
                         <div class="chat-input-zone">
                             <div class="input-glass-wrapper">
                                 <button class="upload-shortcut-btn" id="quickUploadBtn" title="Quick Upload">📎</button>
@@ -154,9 +164,7 @@
                 <!-- DATA LAKE (DOCUMENTS & UPLOAD) VIEW -->
                 <section class="view-panel scroll-y" id="view-documents">
                     <div class="panel-inner">
-                        
                         <div class="grid-2">
-                            <!-- Drag & Drop Zone -->
                             <div class="upload-card glass-panel" id="dropZone">
                                 <div class="upload-icon-large">☁️</div>
                                 <h3>Secure Document Upload</h3>
@@ -164,7 +172,6 @@
                                 <p class="sub-text">Supports PDF, DOCX, XLSX, CSV, PPTX, Images</p>
                                 <input type="file" id="bulkFileInput" multiple hidden accept=".pdf,.docx,.xlsx,.csv,.pptx,.png,.jpg,.jpeg,.txt,.md">
                                 <button class="btn-primary mt-4" id="triggerFileBtn">Select Files</button>
-                                
                                 <div class="upload-progress-container" id="uploadProgressBox">
                                     <div class="progress-info">
                                         <span id="uploadFilename">Uploading...</span>
@@ -173,8 +180,6 @@
                                     <div class="progress-track"><div class="progress-bar" id="uploadBar"></div></div>
                                 </div>
                             </div>
-
-                            <!-- URL Ingestion -->
                             <div class="upload-card glass-panel">
                                 <div class="upload-icon-large">🌐</div>
                                 <h3>Web & API Ingestion</h3>
@@ -183,10 +188,17 @@
                                     <input type="text" id="urlIngestInput" class="glass-input" placeholder="https://example.com/docs">
                                     <button class="btn-primary" id="ingestUrlBtn">Ingest</button>
                                 </div>
+                                <div class="mt-4">
+                                    <div class="flex gap-2 align-center">
+                                        <button class="btn-secondary" id="exportIndexBtn" title="Export index as zip">⬇ Export</button>
+                                        <label class="btn-secondary" id="importIndexLabel" title="Import index from zip" style="cursor:pointer;text-align:center;">
+                                            ⬆ Import
+                                            <input type="file" id="importIndexInput" hidden accept=".zip">
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Document List Table -->
                         <div class="table-card glass-panel mt-6">
                             <div class="card-header-flex">
                                 <h3>Active Vector Index</h3>
@@ -198,21 +210,28 @@
                             <div class="table-responsive">
                                 <table class="glass-table">
                                     <thead>
-                                        <tr>
-                                            <th>File Name</th>
-                                            <th>Type</th>
-                                            <th>Size</th>
-                                            <th>Indexed Date</th>
-                                            <th>Action</th>
-                                        </tr>
+                                        <tr><th>File Name</th><th>Type</th><th>Size</th><th>Indexed Date</th><th>Action</th></tr>
                                     </thead>
-                                    <tbody id="documentTableBody">
-                                        <!-- Documents dynamically injected -->
-                                    </tbody>
+                                    <tbody id="documentTableBody"></tbody>
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </section>
 
+                <!-- SEMANTIC SEARCH VIEW (v3.1 — F7) -->
+                <section class="view-panel scroll-y" id="view-search">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6">
+                            <h2>Semantic Search Engine</h2>
+                            <p class="text-muted mb-4">Search through indexed documents using natural language. Returns ranked passages without LLM generation.</p>
+                            <div class="input-group">
+                                <input type="text" id="semanticSearchInput" class="glass-input" placeholder="Search for anything in your documents...">
+                                <select id="searchSourceFilter" class="mini-select" style="max-width:200px"><option value="">All Sources</option></select>
+                                <button class="btn-primary" id="runSearchBtn">Search</button>
+                            </div>
+                        </div>
+                        <div class="search-results mt-6" id="searchResultsContainer"></div>
                     </div>
                 </section>
 
@@ -221,8 +240,7 @@
                     <div class="panel-inner">
                         <div class="glass-panel pd-6 text-center">
                             <h2>Document Comparator Engine</h2>
-                            <p class="text-muted">Analyze similarities and complex differences between dual documents using the LLM crossover engine.</p>
-                            
+                            <p class="text-muted">Analyze similarities and differences between documents using AI.</p>
                             <div class="compare-grid mt-6">
                                 <div class="compare-side">
                                     <label>Source Document A</label>
@@ -234,19 +252,15 @@
                                     <select class="glass-select" id="compareSelectB"><option>Loading...</option></select>
                                 </div>
                             </div>
-
                             <div class="input-group mt-6">
                                 <input type="text" class="glass-input" id="compareQuestionInput" placeholder="Specify comparison focus (optional)...">
                                 <button class="btn-secondary" id="swapCompareBtn" title="Swap selected documents">Swap</button>
                                 <button class="btn-primary" id="runCompareBtn">Execute Analysis</button>
                             </div>
                         </div>
-
                         <div class="glass-panel mt-6 pd-6 result-panel" id="compareResultPanel">
                             <h3>Comparison Matrix Results</h3>
-                            <div class="markdown-body" id="compareResultContent">
-                                <div class="text-muted">Awaiting execution...</div>
-                            </div>
+                            <div class="markdown-body" id="compareResultContent"><div class="text-muted">Awaiting execution...</div></div>
                         </div>
                     </div>
                 </section>
@@ -257,21 +271,14 @@
                         <div class="glass-panel pd-6">
                             <h2>Structured Data Extraction</h2>
                             <p class="text-muted mb-4">Pull exact keys and JSON structures from unstructured raw texts.</p>
-                            
                             <label>Fields to Extract (one per line)</label>
                             <textarea id="extractFieldsInput" class="glass-textarea" rows="4" placeholder="ClientName&#10;InvoiceNumber&#10;TotalAmount"></textarea>
-                            
                             <label class="mt-4">Extraction Context Filter (optional)</label>
                             <input type="text" id="extractContextInput" class="glass-input mb-4" placeholder="e.g. Look only at Q3 reports">
-                            
                             <button class="btn-primary" id="runExtractBtn">Start Extraction</button>
                         </div>
-
                         <div class="glass-panel mt-6 pd-6 result-panel" id="extractResultPanel">
-                            <div class="card-header-flex">
-                                <h3>Extracted JSON Payload</h3>
-                                <button class="btn-secondary" id="copyExtractBtn">Copy</button>
-                            </div>
+                            <div class="card-header-flex"><h3>Extracted JSON Payload</h3><button class="btn-secondary" id="copyExtractBtn">Copy</button></div>
                             <pre class="json-viewer" id="extractResultContent">// Output</pre>
                         </div>
                     </div>
@@ -282,22 +289,63 @@
                     <div class="panel-inner">
                         <div class="glass-panel pd-6">
                             <h2>Smart Auto-Summarization</h2>
-                            <p class="text-muted mb-4">Leverage Mistral 7B to condense complex vector chunks into dense summaries.</p>
-                            
+                            <p class="text-muted mb-4">Condense complex vector chunks into dense summaries with AI.</p>
                             <div class="input-group">
                                 <input type="text" id="summaryTopicInput" class="glass-input" placeholder="Focus topic (Leave empty for globally blended summary)">
                                 <button class="btn-primary" id="runSummaryBtn">Generate</button>
                             </div>
                         </div>
-
                         <div class="glass-panel mt-6 pd-6 result-panel" id="summaryResultPanel">
+                            <div class="card-header-flex"><h3>Summary Profile</h3><button class="btn-secondary" id="copySummaryBtn">Copy</button></div>
+                            <div class="markdown-body" id="summaryResultContent"><div class="text-muted">Awaiting execution...</div></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BATCH Q&A VIEW (v3.1 — F14) -->
+                <section class="view-panel scroll-y" id="view-batch">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6">
+                            <h2>Batch Q&A Processor</h2>
+                            <p class="text-muted mb-4">Submit multiple questions at once. Get answers as a downloadable CSV or table.</p>
+                            <label>Questions (one per line)</label>
+                            <textarea id="batchQuestionsInput" class="glass-textarea" rows="6" placeholder="What is the total revenue?&#10;Who are the key stakeholders?&#10;When was the contract signed?"></textarea>
+                            <div class="flex gap-2 mt-4">
+                                <button class="btn-primary" id="runBatchBtn">Run Batch</button>
+                                <button class="btn-secondary" id="exportBatchBtn" style="display:none">⬇ Export CSV</button>
+                            </div>
+                        </div>
+                        <div class="glass-panel mt-6 pd-6 result-panel" id="batchResultPanel" style="display:none">
+                            <h3>Batch Results</h3>
+                            <div class="table-responsive">
+                                <table class="glass-table"><thead><tr><th>#</th><th>Question</th><th>Answer</th><th>Time</th></tr></thead>
+                                <tbody id="batchResultBody"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- KNOWLEDGE GRAPH VIEW (v3.1 — F13) -->
+                <section class="view-panel scroll-y" id="view-kg">
+                    <div class="panel-inner">
+                        <div class="glass-panel pd-6">
                             <div class="card-header-flex">
-                                <h3>Summary Profile</h3>
-                                <button class="btn-secondary" id="copySummaryBtn">Copy</button>
+                                <div>
+                                    <h2>Knowledge Graph Explorer</h2>
+                                    <p class="text-muted">Visualize entities and relationships extracted from your documents.</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="btn-secondary" id="refreshKgBtn">Refresh</button>
+                                    <button class="btn-danger-outline" id="resetKgBtn">Reset Graph</button>
+                                </div>
                             </div>
-                            <div class="markdown-body" id="summaryResultContent">
-                                <div class="text-muted">Awaiting execution...</div>
+                        </div>
+                        <div class="glass-panel mt-6 pd-6" id="kgVisualization">
+                            <div class="kg-stats-row" id="kgStatsRow"></div>
+                            <div class="kg-canvas-wrapper">
+                                <canvas id="kgCanvas" width="900" height="500"></canvas>
                             </div>
+                            <div class="kg-entity-list mt-4" id="kgEntityList"></div>
                         </div>
                     </div>
                 </section>
@@ -309,9 +357,10 @@
                             <h2>System Analytics Dashboard</h2>
                             <button class="btn-secondary mt-2" id="refreshAnalyticsBtn">Refresh Data</button>
                         </div>
-
-                        <div class="stats-grid" id="analyticsDashboard">
-                            <!-- JS Inject -->
+                        <div class="stats-grid" id="analyticsDashboard"></div>
+                        <div class="glass-panel mt-6 pd-6">
+                            <h3>Query Analytics</h3>
+                            <div class="stats-grid mt-4" id="queryAnalyticsDash"></div>
                         </div>
                     </div>
                 </section>
@@ -329,25 +378,13 @@
                                 <button class="btn-danger-outline" id="purgeRagasBtn">Purge Logs</button>
                             </div>
                         </div>
-
-                        <div class="stats-grid" id="ragasDashboard">
-                            <!-- Stats injected -->
-                        </div>
-
+                        <div class="stats-grid" id="ragasDashboard"></div>
                         <div class="table-card glass-panel mt-6">
-                            <div class="card-header-flex">
-                                <h3>Recent Evaluation History</h3>
-                            </div>
+                            <div class="card-header-flex"><h3>Recent Evaluation History</h3></div>
                             <div class="table-responsive">
                                 <table class="glass-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Query</th>
-                                            <th>Overall %</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ragasHistoryLog">
-                                    </tbody>
+                                    <thead><tr><th>Query</th><th>Overall %</th></tr></thead>
+                                    <tbody id="ragasHistoryLog"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -361,20 +398,13 @@
     <!-- Modals -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal-content glass-panel">
-            <div class="modal-header">
-                <h3>Global Instance Settings</h3>
-                <button class="close-modal-btn">×</button>
-            </div>
+            <div class="modal-header"><h3>Global Instance Settings</h3><button class="close-modal-btn">×</button></div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Instance Controls</label>
-                    <input type="text" class="glass-input" value="Frontend controls and cache actions" readonly disabled>
+                <div class="form-group"><label>Cache Matrix Control</label>
+                    <div class="flex gap-2 mt-2"><button class="btn-secondary w-full" id="clearCacheBtn">Purge Query Cache</button></div>
                 </div>
-                <div class="form-group mt-4">
-                    <label>Cache Matrix Control</label>
-                    <div class="flex gap-2 mt-2">
-                        <button class="btn-secondary w-full" id="clearCacheBtn">Purge Query Cache</button>
-                    </div>
+                <div class="form-group mt-4"><label>Query Analytics</label>
+                    <div class="flex gap-2 mt-2"><button class="btn-danger-outline w-full" id="clearAnalyticsCacheBtn">Clear Analytics Data</button></div>
                 </div>
             </div>
         </div>
@@ -382,29 +412,21 @@
 
     <div class="modal-overlay" id="sourceModal">
         <div class="modal-content glass-panel modal-lg">
-            <div class="modal-header">
-                <h3 id="sourceModalTitle">Source Artifact</h3>
-                <button class="close-modal-btn">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="glass-textarea readout-box mono-text" id="sourceModalBody"></div>
-            </div>
+            <div class="modal-header"><h3 id="sourceModalTitle">Source Artifact</h3><button class="close-modal-btn">×</button></div>
+            <div class="modal-body"><div class="glass-textarea readout-box mono-text" id="sourceModalBody"></div></div>
         </div>
     </div>
 
     <div class="modal-overlay" id="previewModal">
-        <div class="modal-content glass-panel modal-lg" style="height: 85vh; display: flex; flex-direction: column;">
-            <div class="modal-header">
-                <h3 id="previewModalTitle">Document Preview</h3>
-                <button class="close-modal-btn">×</button>
-            </div>
-            <div class="modal-body" style="flex: 1; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-                <iframe id="previewFrame" style="width: 100%; height: 100%; border: none; flex: 1; background: #fff;"></iframe>
-                <div id="previewUnsupported" style="display: none; padding: 40px; text-align: center; margin: auto;">
-                    <div class="empty-icon text-muted" style="margin-bottom: 16px;">📄</div>
+        <div class="modal-content glass-panel modal-lg" style="height:85vh;display:flex;flex-direction:column;">
+            <div class="modal-header"><h3 id="previewModalTitle">Document Preview</h3><button class="close-modal-btn">×</button></div>
+            <div class="modal-body" style="flex:1;padding:0;overflow:hidden;display:flex;flex-direction:column;">
+                <iframe id="previewFrame" style="width:100%;height:100%;border:none;flex:1;background:#fff;"></iframe>
+                <div id="previewUnsupported" style="display:none;padding:40px;text-align:center;margin:auto;">
+                    <div class="empty-icon text-muted" style="margin-bottom:16px;">📄</div>
                     <h4>Preview Not Available</h4>
-                    <p class="text-muted mt-2">This file type cannot be previewed natively in the browser. You can download it to view it locally.</p>
-                    <a id="previewDownloadBtn" class="btn-primary mt-4" style="display: inline-block; text-decoration: none;" download>Download File</a>
+                    <p class="text-muted mt-2">This file type cannot be previewed natively. Download it to view locally.</p>
+                    <a id="previewDownloadBtn" class="btn-primary mt-4" style="display:inline-block;text-decoration:none;" download>Download File</a>
                 </div>
             </div>
         </div>
@@ -412,16 +434,14 @@
 
     <div class="modal-overlay" id="shortcutsModal">
         <div class="modal-content glass-panel">
-            <div class="modal-header">
-                <h3>Keyboard Shortcuts</h3>
-                <button class="close-modal-btn">×</button>
-            </div>
+            <div class="modal-header"><h3>Keyboard Shortcuts</h3><button class="close-modal-btn">×</button></div>
             <div class="modal-body">
                 <div class="shortcut-grid">
                     <div class="shortcut-row"><span>Focus query box</span><kbd>Ctrl/Cmd + K</kbd></div>
                     <div class="shortcut-row"><span>Send message</span><kbd>Ctrl/Cmd + Enter</kbd></div>
                     <div class="shortcut-row"><span>Close open modal</span><kbd>Esc</kbd></div>
                     <div class="shortcut-row"><span>Toggle streaming</span><kbd>Alt + S</kbd></div>
+                    <div class="shortcut-row"><span>Toggle sidebar</span><kbd>Alt + B</kbd></div>
                 </div>
             </div>
         </div>

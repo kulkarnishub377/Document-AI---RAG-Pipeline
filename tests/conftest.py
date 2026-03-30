@@ -1,6 +1,7 @@
 # tests/conftest.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared pytest fixtures for all test modules
+# v3.1 — Added fixtures for new features
 # ─────────────────────────────────────────────────────────────────────────────
 
 import io
@@ -96,4 +97,29 @@ def mock_query_response():
                 "chunk_type": "text",
             },
         ],
+        "response_time_ms": 250,
+    }
+
+
+@pytest.fixture
+def mock_batch_response():
+    """Mock batch Q&A response."""
+    return {
+        "results": [
+            {"question": "What is the total?", "answer": "$100", "sources": [], "response_time_ms": 100},
+            {"question": "Who signed?", "answer": "John Doe", "sources": [], "response_time_ms": 120},
+        ],
+        "total": 2,
+    }
+
+
+@pytest.fixture
+def mock_search_response():
+    """Mock semantic search response."""
+    return {
+        "results": [
+            {"text": "Sample chunk text", "source": "doc.pdf", "page": 1, "chunk_type": "text", "score": 0.95, "chunk_id": "abc123"},
+        ],
+        "total": 1,
+        "query": "test query",
     }
